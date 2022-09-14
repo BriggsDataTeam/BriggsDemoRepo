@@ -1,0 +1,171 @@
+{
+	"name": "Pipeline 1",
+	"properties": {
+		"activities": [
+			{
+				"name": "POR_Copy To_DataLake",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "Select Distinct ID ID2,sourceDB,SourcetableName From dbo.control_table_por Where ProcessName = 'AzSQL_ADLS'  and sourcedb='POR'\nand EnableAction = 1   order by ID",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_POR_CopyToDataLake",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "POR_Copy To_DataLake",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('POR_Copy To_DataLake').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Lookup_POR_copyToDataLake",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select SourceQuery=''select '' +columnList+ '' from ''+ sourceDB+''.''+SourceSchemaName+''.''+SourcetableName\n,SourceDB\n,TargetContainer\n, TargetPath, TargetFile, FileFormat,targetstagetableschema,targetstagetablename\nfrom dbo.control_table_por\nwhere ID= ',item().ID2)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "Briggs_MDW",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": "dbo",
+										"table_name": "user"
+									}
+								}
+							}
+						},
+						{
+							"name": "Copy_POR_ADLS_CopyTo_DataLake",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Lookup_POR_copyToDataLake",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@activity('Lookup_POR_copyToDataLake').output.firstRow.SourceQuery\n",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobStorageWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "POR_Dataset",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "Parquet1",
+									"type": "DatasetReference",
+									"parameters": {
+										"ContainerName": {
+											"value": "@activity('Lookup_POR_copyToDataLake').output.firstRow.TargetContainer",
+											"type": "Expression"
+										},
+										"Path": {
+											"value": "@activity('Lookup_POR_copyToDataLake').output.firstRow.TargetPath",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@concat(activity('Lookup_POR_copyToDataLake').output.firstRow.TargetFile,'.',activity('Lookup_POR_copyToDataLake').output.firstRow.FileFormat)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "To be Deleted"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-06-23T10:25:14Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

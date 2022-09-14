@@ -1,0 +1,25 @@
+{
+	"name": "Morning_1-40_cst",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2022-08-05T19:41:00",
+				"timeZone": "Central Standard Time",
+				"schedule": {
+					"minutes": [
+						40
+					],
+					"hours": [
+						1
+					]
+				}
+			}
+		}
+	}
+}

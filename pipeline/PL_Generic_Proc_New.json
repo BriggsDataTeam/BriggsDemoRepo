@@ -1,0 +1,2203 @@
+{
+	"name": "PL_Generic_Proc_New",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup_Stage_Procs",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "ForEach_Dimension",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select id,sourcetablename, sourcedb from dbo.control_table_por \nwhere SubjectArea='Report Stage POR SP' and processsequence=2 and enableaction=1\norder by id",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Stage_Procs",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_Stage_Procs",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_Stage_Procs').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Staging_Proc1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_AuditLogStart1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": {
+									"value": "@item().sourcetablename",
+									"type": "Expression"
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_AuditLogStart1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_StartAuditLog_Briggs]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataFactoryName": {
+										"value": {
+											"value": "@pipeline().DataFactory",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ParentAuditID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"PipelineName": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerID": {
+										"value": {
+											"value": "@pipeline().TriggerId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerName": {
+										"value": {
+											"value": "@pipeline().TriggerName",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerType": {
+										"value": {
+											"value": "@pipeline().TriggerType",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Sourcedb": {
+										"value": {
+											"value": "@item().sourcedb",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"sourcetable": {
+										"value": {
+											"value": "@item().sourcetablename",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_SuccessAuditLog1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_Proc1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": "Success",
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_ErrorVar1",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Staging_Proc1",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ErrorMessage",
+								"value": {
+									"value": "@activity('Staging_Proc1').Error.Message",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Staging_FailureAuditLog1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_ErrorVar1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": {
+											"value": "@variables('ErrorMessage')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_Update_control_por1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_SuccessAuditLog1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[USP_Control_Table_POR_LastDate]",
+								"storedProcedureParameters": {
+									"id_I_F": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Inventory",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "/*\nDATA PULL_Inventory_approved_v2\nLast edit:  2022 March 22\n*/\n\n--Temp table (1/1)\tHave system generate unique dates\n--IF OBJECT_ID('tempdb..#DateRange') IS NOT NULL \n--   DROP TABLE #DateRange;  \n--GO\n--CREATE TABLE #DateRange (UniqueDate DATE PRIMARY KEY)\n--INSERT INTO #DateRange\n--SELECT TOP (10592) DATEADD(DAY,ROW_NUMBER() OVER (ORDER BY (SELECT 1)), '20201231') AS N\n--FROM master.dbo.spt_values v1, master.dbo.spt_values v2;\nwith DateRange_cte As\n(\n\tSELECT TOP (10592) DATEADD(DAY,ROW_NUMBER() OVER (ORDER BY (SELECT 1)), '20201231') AS UniqueDate\n\tFROM master.dbo.spt_values v1, master.dbo.spt_values v2\n)\n\n--CTEs:  amalgamate details and summary for scripted/automatic aggregation as needed\n--CTE (1/5)\t\tRepair info:  details and aggregates\n, repairs_cte AS\t\t--alias:  rc\n(\nSELECT\n  ti0.ITEM\n, summary.MaintenanceType\n, summary.TotalLaborHours\n, CAST(summary.LaborCost/NULLIF(summary.NumAssets,0) AS DECIMAL(18,2)) AS LaborCost\n, CAST(summary.ServicePartsCost/NULLIF(summary.NumAssets,0) AS DECIMAL(18,2)) AS ServicePartsCost\n, summary.OutDate\n, summary.CompletedDate\n, summary.CNTR\n, summary.DaysDown\nFROM POR.dbo.TransactionItems ti0\nJOIN POR.dbo.ItemFile ifi0 ON ifi0.NUM = ti0.ITEM\nJOIN (\n\tSELECT\n\t  details.CNTR\n\t, details.MaintenanceType\n\t, SUM(IIF(details.Asset = 1,1,0)) AS NumAssets\n\t, SUM(details.LaborHours) AS TotalLaborHours\n\t, SUM(IIF(details.Name LIKE 'labor', details.Pric,0)) AS LaborCost\n\t, SUM(IIF(details.Name NOT LIKE 'labor', details.Pric,0)) AS ServicePartsCost\n\t, MIN(details.OutDate) AS OutDate\n\t, MAX(details.CompletedDate) AS CompletedDate\n\t, DATEDIFF(d,details.OutDate,IIF(details.CompletedDate IS NULL, GETDATE(),details.CompletedDate)) AS DaysDown\n\tFROM (\n\t\tSELECT t.CNTR, ti.Sort, ifi.Asset, ifi.Name, ifi.NUM, IIF(ifi.Name LIKE '%labor%', ti.QTY, 0) AS LaborHours, ti.PRIC\n\t\t, CASE WHEN CF.[KEY] LIKE 'REPAIRS-MAINT%' THEN 'IMO'\n\t\t\tWHEN CF.[KEY] NOT LIKE 'REPAIRS-MAINT%' THEN 'IRO'\n\t\t\tEND AS [MaintenanceType]\n\t\t, CF.[KEY]\n\t\t, CAST(t.[DATE] AS DATE) AS OutDate\n\t\t, CAST(t.Completed AS DATE) AS CompletedDate\n\t\tFROM POR.dbo.Transactions t\n\t\tJOIN POR.dbo.TransactionItems ti ON ti.CNTR = t.CNTR\n\t\tJOIN POR.dbo.ItemFile ifi ON ifi.NUM = ti.ITEM\n\t\tJOIN POR.dbo.CustomerFile CF ON T.CUSN = CF.CNUM\n\t\tWHERE LEFT(t.CNTR,1) = 'r'\n\t\tAND LEFT(ti.Sort,4) <> 'zzzz'\n\t\tAND RIGHT(ifi.[KEY],2) <> 'RR'\n\t) details\n\tGROUP BY\n\t  details.CNTR\n\t, details.MaintenanceType\n\t, DATEDIFF(d,details.OutDate,IIF(details.CompletedDate IS NULL, GETDATE(),details.CompletedDate))\n) summary ON summary.CNTR = ti0.CNTR\nWHERE ifi0.Asset = 1\n)\n\n--CTE (2/5)\t\tRepair info:  Days since item was last down\n, lastCompletedDate_cte AS\t\t--alias:  lcd\n(\nSELECT ITEM, repairs_cte.MaintenanceType, repairs_cte.CompletedDate AS LastCompletedDate\n\t, ROW_NUMBER() OVER(PARTITION BY repairs_cte.ITEM ORDER BY (CASE WHEN repairs_cte.CompletedDate IS NULL THEN GETDATE() ELSE repairs_cte.CompletedDate END) DESC) AS [RowNumber]\nFROM repairs_cte\n)\n\n--CTE (3/5)\t\tRepair days:  Use unique days\n, repairDays_cte AS\t\t--alias:  rd\n(\n\tSELECT\n\t  a.ITEM\n\t, COUNT(DISTINCT CASE WHEN a.UniqueDate >= '2021-12-01' AND a.MaintenanceType = 'IMO' THEN a.UniqueDate ELSE NULL END) AS TotalDaysIMO\n\t, COUNT(DISTINCT CASE WHEN a.UniqueDate >= '2021-12-01' AND a.MaintenanceType = 'IRO' THEN a.UniqueDate ELSE NULL END) AS TotalDaysIRO\n\t, COUNT(DISTINCT CASE WHEN a.UniqueDate >= '2021-12-01' THEN a.UniqueDate ELSE NULL END) AS TotalDaysRepair\n\tFROM (\n\t\tSELECT\n\t\tti3.ITEM\n\t\t, CASE WHEN CF3.[KEY] LIKE 'REPAIRS-MAINT%' THEN 'IMO'\n\t\t\tWHEN CF3.[KEY] NOT LIKE 'REPAIRS-MAINT%' THEN 'IRO'\n\t\t\tEND AS [MaintenanceType]\n\t\t, dr3.UniqueDate\n\t\tFROM POR.dbo.Transactions t3\n\t\tJOIN POR.dbo.TransactionItems ti3 ON ti3.CNTR = t3.CNTR\n\t\tJOIN POR.dbo.ItemFile ifi3 ON ifi3.NUM = ti3.ITEM\n\t\tJOIN POR.dbo.CustomerFile CF3 ON T3.CUSN = CF3.CNUM\n\t\tJOIN DateRange_cte dr3 ON dr3.UniqueDate BETWEEN CAST(t3.[DATE] AS DATE) AND CAST(CASE WHEN t3.Completed IS NULL THEN GETDATE() ELSE CAST(t3.Completed AS DATE) END AS DATE)\n\t\tWHERE LEFT(t3.CNTR,1) = 'r'\n\t\tAND LEFT(ti3.Sort,4) <> 'zzzz'\n\t\tAND RIGHT(ifi3.[KEY],2) <> 'RR'\n\t\tGROUP BY\n\t\tti3.ITEM\n\t\t, CASE WHEN CF3.[KEY] LIKE 'REPAIRS-MAINT%' THEN 'IMO'\n\t\t\tWHEN CF3.[KEY] NOT LIKE 'REPAIRS-MAINT%' THEN 'IRO'\n\t\t\tEND\n\t\t, dr3.UniqueDate\n\t) a\n\tGROUP BY\n\t  a.ITEM\n)\n\n--CTE (4/5)\t\tContract info:  Aggregates by ITEM\n, contractRev_cte AS\t--alias:  cr\n(\nSELECT\n  c.ITEM\n, SUM(c.TotalContractRevenue) AS TotalRentalRevenue\n, SUM(c.[30d_ContractRevenue]) AS [30d_TotalRentalRevenue]\n, SUM(c.[60d_ContractRevenue]) AS [60d_TotalRentalRevenue]\n, SUM(c.[90d_ContractRevenue]) AS [90d_TotalRentalRevenue]\n, SUM(c.[180d_ContractRevenue]) AS [180d_TotalRentalRevenue]\n, SUM(c.[R12d_ContractRevenue]) AS [R12d_TotalRentalRevenue]\n, SUM(c.[YTD_ContractRevenue]) AS [YTD_TotalRentalRevenue]\n, CAST(MAX(c.MaxContractStartDate) AS DATE) AS [LastItemContractStartDate]\n, CAST(MAX(c.MaxContractDate) AS DATE) AS [LastItemContractDate]\n, CAST(MAX(c.MaxCurrentDate) AS DATE) AS [LastItemContractDate_current]\nFROM (\n\tSELECT\n\t  LEFT(b.CNTR,6) AS CNTR\n\t, b.ITEM\n\t, SUM(b.PRIC) AS TotalContractRevenue\n\t, SUM(CASE WHEN b.ARdays  = 30 THEN b.PRIC ELSE 0 END) AS [30d_ContractRevenue]\n\t, SUM(CASE WHEN b.ARdays <= 60 THEN b.PRIC ELSE 0 END) AS [60d_ContractRevenue]\n\t, SUM(CASE WHEN b.ARdays <= 90 THEN b.PRIC ELSE 0 END) AS [90d_ContractRevenue]\n\t, SUM(CASE WHEN b.ARdays <= 180 THEN b.PRIC ELSE 0 END) AS [180d_ContractRevenue]\n\t, SUM(CASE WHEN b.ARdays <= 365 THEN b.PRIC ELSE 0 END) AS [R12d_ContractRevenue]\n\t, SUM(IIF(YEAR(b.DATE) = YEAR(GETDATE()),b.PRIC,0)) AS [YTD_ContractRevenue]\n\t, MAX(b.DATE) AS MaxContractStartDate\n\t, MAX(b.MaxActualContractDate) AS MaxContractDate\n\t, MAX(b.MaxCurrentContractDate) AS MaxCurrentDate\n\tFROM (\n\t\tSELECT\n\t\t  ti0.CNTR\n\t\t, ti0.ITEM\n\t\t, ti0.PRIC\n\t\t, CASE WHEN DATEDIFF(d,t0.[DATE],GETDATE()) <= 30 THEN 30\n\t\t\tWHEN DATEDIFF(d,t0.[DATE],GETDATE()) > 30 AND DATEDIFF(d,t0.[DATE],GETDATE()) <= 60 THEN 60\n\t\t\tWHEN DATEDIFF(d,t0.[DATE],GETDATE()) > 60 AND DATEDIFF(d,t0.[DATE],GETDATE()) <= 90 THEN 90\n\t\t\tWHEN DATEDIFF(d,t0.[DATE],GETDATE()) > 90 AND DATEDIFF(d,t0.[DATE],GETDATE()) <= 180 THEN 180\n\t\t\tWHEN DATEDIFF(d,t0.[DATE],GETDATE()) > 180 AND DATEDIFF(d,t0.[DATE],GETDATE()) <= 365 THEN 365\n\t\t\tELSE 9999 END AS ARdays\n\t\t, t0.[DATE]\n\t\t, a.MaxActualContractDate\n\t\t, a.MaxCurrentContractDate\n\t\tFROM POR.dbo.Transactions t0\n\t\tJOIN POR.dbo.TransactionItems ti0 ON ti0.CNTR = t0.CNTR\n\t\tJOIN POR.dbo.ItemFile ifi0 ON ifi0.NUM = ti0.ITEM\n\t\tJOIN POR.dbo.ItemType it0 ON it0.[Type] = ifi0.[TYPE]\n\t\tJOIN (\n\t\t\t\tSELECT LEFT(ti1.CNTR,6) AS CNTRgroup, ti1.ITEM\n\t\t\t\t, MIN(t1.[DATE]) AS MinContractDate\n\t\t\t\t, MAX(CASE WHEN ti1.TXTY IN ('RR','RX') THEN ti1.DDT ELSE t1.CLDT END) AS MaxActualContractDate\t\t--basing on picked up date because they are partitioning at the item level\n\t\t\t\t, MAX(CASE WHEN t1.CLDT IS NULL THEN '3333-12-31' WHEN ti1.TXTY IN ('RR','RX') THEN ti1.DDT ELSE t1.CLDT END) AS MaxCurrentContractDate\n\t\t\t\tFROM POR.dbo.Transactions t1\n\t\t\t\tJOIN POR.dbo.TransactionItems ti1 ON ti1.CNTR = t1.CNTR\n\t\t\t\tJOIN POR.dbo.ItemFile ifi1 ON ifi1.NUM = ti1.ITEM\n\t\t\t\tWHERE ((ifi1.UserDefined1 <> '' AND t1.[DATE] >= '2021-12-01') OR ifi1.UserDefined1 = '')\n\t\t\t\tAND t1.[DATE] <= GETDATE()\n\t\t\t\tGROUP BY LEFT(ti1.CNTR,6), ti1.ITEM\n\t\t) a ON a.CNTRgroup = LEFT(ti0.CNTR,6) AND a.ITEM = ifi0.NUM\n\t\tWHERE LEFT(t0.CNTR,1) NOT IN ('q','r','s','t','w','c') \n\t\tAND LEFT(it0.TypeDescrip,6) = 'Rental'\n\t\tAND RIGHT(ifi0.[KEY],2) <> 'RR'\n\t\tAND ((ifi0.UserDefined1 <> '' AND t0.[DATE] >= '2021-12-01') OR ifi0.UserDefined1 = '')\n\t\tAND t0.[DATE] <= GETDATE()\n\t) b\n\tGROUP BY\n\t  LEFT(b.CNTR,6)\n\t, b.ITEM\n) c\nGROUP BY\n  c.ITEM\n)\n\n--CTE (5/5)\t\tTimeUt by Item info:  uses temp table at beginning of query\n, timeUt_cte AS (\t--alias:  tu\nSELECT\n  a.ITEM\n, SUM(IIF(a.UniqueDate >= CAST(IIF(DATEADD(DAY,-30,GETDATE()) < '2021-12-01', '2021-12-01',DATEADD(DAY,-30,GETDATE()+1)) AS DATE), 1, 0)) AS [30dDistinct_OnRent]\n, SUM(IIF(a.UniqueDate >= CAST(IIF(DATEADD(DAY,-90,GETDATE()) < '2021-12-01', '2021-12-01',DATEADD(DAY,-90,GETDATE()+1)) AS DATE), 1, 0)) AS [90dDistinct_OnRent]\n, SUM(IIF(a.UniqueDate >= CAST(IIF(DATEADD(DAY,-180,GETDATE()) < '2021-12-01', '2021-12-01',DATEADD(DAY,-180,GETDATE()+1)) AS DATE), 1, 0)) AS [180dDistinct_OnRent]\n, SUM(IIF(a.UniqueDate >= CAST(IIF(DATEADD(DAY,-365,GETDATE()) < '2021-12-01', '2021-12-01',DATEADD(DAY,-365,GETDATE()+1)) AS DATE), 1, 0)) AS [R12dDistinct_OnRent]\n, SUM(IIF(a.UniqueDate >= DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0), 1, 0)) AS [YTDdistinct_OnRent]\n, SUM(IIF(a.UniqueDate >= '2021-12-01', 1, 0)) AS [TotalDistinct_UT]\nFROM (\n\tSELECT ti2.ITEM, dr.UniqueDate\n\tFROM POR.dbo.Transactions t2\n\tJOIN POR.dbo.TransactionItems ti2 ON ti2.CNTR = t2.CNTR\n\tJOIN POR.dbo.ItemFile ifi2 ON ifi2.NUM = ti2.ITEM\n\tJOIN POR.dbo.ItemPurchaseDetail ipd2 ON ipd2.ItemNumber = ifi2.NUM\n\tJOIN DateRange_cte dr ON dr.UniqueDate BETWEEN CAST(t2.[DATE] AS DATE) AND CAST(CASE WHEN t2.CLDT IS NULL THEN GETDATE() ELSE ti2.DDT END AS DATE)\n\tWHERE LEFT(t2.CNTR,1) NOT IN ('q','r','s','t','w','c')\n\tAND ifi2.SerialNumber <> ''\n\tAND t2.DATE < CAST(GETDATE() AS DATE)\n\tAND dr.UniqueDate <= GETDATE()\n\tAND dr.UniqueDate >= ipd2.PurchaseDate\n\tGROUP BY ti2.ITEM, dr.UniqueDate\n) a\nGROUP BY a.ITEM\n)\n\n\n\n--MAIN QUERY:\n--Expected approximation:  3.4k results\nSELECT\nifi.[KEY], ifi.Header, ifi.[Name], ic.[Name] AS Category, ifi.MANF AS Make, ifi.MODN AS Model\n, ifi.ModelYear AS [Model_Year], ifi.SerialNumber AS [Serial_Number]\n, DATEDIFF(m,ipd.PurchaseDate,GETDATE()) AS [Age_In_Months]\n, CAST(ipd.PurchaseDate AS DATE) AS [Original_DOP], ipd.OEC, ifi.CURV AS NBV, ifi.DEPA AS [Accum_Depr]\n, ifi.PURP AS [Acquisition_Cost], ipd.PONumber AS [PO_Number], ipd.ExtraCost AS [Extra_Cost], ifi.CurrentStore AS [Current_Store]\n, CASE WHEN pf.Store <> '001' THEN RIGHT(pf.STORE_NAME, LEN(pf.STORE_NAME) - 4) ELSE pf.STORE_NAME END AS [Store_Name]\n, it.TypeDescrip AS [Type], ifi.MTOT AS [Hours], ifi.UserDefined1 AS [Legacy_ID],ifi.QTY AS Item_Qty            \n\n--Time utilization\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(MAX(ISNULL(CAST(CAST(tu.[30dDistinct_OnRent] AS DECIMAL(18,2))/30.00 *100 AS DECIMAL(18,2)),0)) AS VARCHAR(20)) + '%' ELSE NULL END AS [30d_TU]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(MAX(ISNULL(CAST(CAST(tu.[90dDistinct_OnRent] AS DECIMAL(18,2))/90.00 *100 AS DECIMAL(18,2)),0)) AS VARCHAR(20)) + '%' ELSE NULL END AS [90d_TU]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(MAX(ISNULL(CAST(CAST(tu.[180dDistinct_OnRent] AS DECIMAL(18,2))/180.00 *100 AS DECIMAL(18,2)),0)) AS VARCHAR(20)) + '%' ELSE NULL END AS [180d_TU]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(MAX(ISNULL(CAST(CAST(tu.[R12dDistinct_OnRent] AS DECIMAL(18,2))/365.00 *100 AS DECIMAL(18,2)),0)) AS VARCHAR(20)) + '%' ELSE NULL END AS [R12_TU]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(MAX(ISNULL(CAST(CAST(tu.[YTDdistinct_OnRent] AS DECIMAL(18,2))/(DATEDIFF(d,DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0),GETDATE()+1)) *100 AS DECIMAL(18,2)),0)) AS VARCHAR(20)) + '%' ELSE NULL END AS [YTD_TU]\n\n--Dollar utilization\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(ISNULL((SUM(cr.[30d_TotalRentalRevenue]/NULLIF(ipd.OEC,0))*12) *100,0) AS VARCHAR(20)) + '%' ELSE NULL END AS [30d_$Ut%]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(ISNULL((SUM(cr.[90d_TotalRentalRevenue]/NULLIF(ipd.OEC,0))*4) *100,0) AS VARCHAR(20)) + '%' ELSE NULL END AS [90d_$Ut%]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(ISNULL((SUM(cr.[180d_TotalRentalRevenue]/NULLIF(ipd.OEC,0))*2) *100,0) AS VARCHAR(20)) + '%' ELSE NULL END AS [180d_$Ut%]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(ISNULL((SUM(cr.[R12d_TotalRentalRevenue]/NULLIF(ipd.OEC,0))) *100,0) AS VARCHAR(20)) + '%' ELSE NULL END AS [R12_$Ut%]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(ISNULL((SUM(cr.[YTD_TotalRentalRevenue]/NULLIF(ipd.OEC,0))*(365/DATEDIFF(d,DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0),GETDATE()))) *100,0) AS VARCHAR(20)) + '%' ELSE NULL END AS [YTD_$Ut%]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN ISNULL(cr.TotalRentalRevenue,0) ELSE NULL END AS [LTD_Revenue]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN CAST(ISNULL(CAST(CAST(tu.[TotalDistinct_UT] AS DECIMAL(18,2)) / NULLIF(DATEDIFF(d,IIF(ifi.UserDefined1 <> '','2021-12-01',CAST(ipd.PurchaseDate AS DATE)),CAST(GETDATE()+1 AS DATE)),0)*100 AS DECIMAL(18,2)),0) AS VARCHAR(10)) + '%' ELSE NULL END AS [SP%_LTDTU]\n, CASE WHEN LEFT(it.TypeDescrip,6) = 'Rental' THEN ISNULL(CAST(MAX(CAST(CAST(rd.TotalDaysRepair AS DECIMAL(18,2)) / NULLIF(DATEDIFF(d,IIF(ifi.UserDefined1 <> '','2021-12-01',CAST(ipd.PurchaseDate AS DATE)),GETDATE()+1),0)*100 AS DECIMAL(18,2))) AS VARCHAR(10)),0) + '%' ELSE NULL END AS [SP%_Life_Down]\n, IIF((cr.LastItemContractDate_current = '3333-12-31' OR GETDATE() BETWEEN cr.LastItemContractStartDate AND cr.LastItemContractDate_current),'On rent', CAST(DATEDIFF(d,cr.LastItemContractDate,GETDATE())AS VARCHAR(20)) ) AS [Last_Rent_In_Days]\n\n--Maintenance/Repair\n, SUM(IIF(rc.ITEM IS NOT NULL,ISNULL(rc.TotalLaborHours,0),NULL)) AS [Total_Labor_Hours]\n, SUM(rc.LaborCost) AS [Total_Labor_Cost]\n, CASE WHEN rc.ITEM IS NOT NULL AND lcd.RowNumber = 1 AND lcd.LastCompletedDate IS NOT NULL THEN CAST(DATEDIFF(d, lcd.LastCompletedDate,GETDATE()) AS VARCHAR(20))\n\tWHEN rc.ITEM IS NOT NULL AND lcd.LastCompletedDate IS NULL THEN CAST('Down' AS VARCHAR(5))\n\tELSE NULL END AS [Days_Since_Last_Down]\n, lcd.MaintenanceType AS [Last_Down_Type]\n, SUM(IIF(rc.ITEM IS NOT NULL,IIF(rc.MaintenanceType = 'IRO',1,0),NULL)) AS [IRO_Totals]\n, rd.TotalDaysIRO AS [IRO_Days_Down]\n, SUM(IIF(rc.ITEM IS NOT NULL,IIF(rc.MaintenanceType = 'IRO',rc.LaborCost + rc.ServicePartsCost,0),NULL)) AS [IRO_Labor_Parts_Cost]\n, SUM(IIF(rc.ITEM IS NOT NULL,IIF(rc.MaintenanceType = 'IMO',1,0),NULL)) AS [IMO_Totals]\n, rd.TotalDaysIMO AS [IMO_Days_Down]\n, SUM(IIF(rc.ITEM IS NOT NULL,IIF(rc.MaintenanceType = 'IMO',rc.LaborCost + rc.ServicePartsCost,0),NULL)) AS [IMO_Labor_PartsCost]\n, GETDATE() [last_refresh_date]\nFROM POR.dbo.ItemFile ifi\nLEFT JOIN POR.dbo.ItemCategory ic ON ic.Category = ifi.Category\nJOIN POR.dbo.ItemType it ON it.[Type] = ifi.[TYPE]\nJOIN (SELECT\n\t\tipd0.ItemNumber, CASE WHEN ipd0.PONumber = 0 THEN NULL ELSE ipd0.PONumber END AS PONumber, ipd0.PurchaseDate, ipd0.ExtraCharges AS ExtraCost\n\t\t, SUM(([QuantityPurchased] - [QuantitySold]) * ([PriceEach] + [ExtraCharges])) AS OEC\n\t\t, ROW_NUMBER() OVER(PARTITION BY ipd0.ItemNumber ORDER BY ipd0.PurchaseDate) AS [RowNumber]\n\t\tFROM POR.dbo.ItemPurchaseDetail ipd0\n\t\tWHERE ipd0.QuantityPurchased > 0\n\t\tGROUP BY ipd0.ItemNumber, CASE WHEN ipd0.PONumber = 0 THEN NULL ELSE ipd0.PONumber END, ipd0.PurchaseDate, ipd0.ExtraCharges\n\t) ipd ON ipd.ItemNumber = ifi.NUM\nLEFT JOIN (\n\t\tSELECT ti.ITEM\n\t\tFROM POR.dbo.Transactions t\n\t\tJOIN POR.dbo.TransactionItems ti ON ti.CNTR = t.CNTR\n\t\tWHERE ti.TXTY IN ('SA')\n\t\tAND LEFT(t.STAT,1) = 'O'\n\t\tAND ti.QTY = 1\n\t) sa ON sa.ITEM = ifi.NUM\nLEFT JOIN POR.dbo.ParameterFile pf ON pf.Store = ifi.CurrentStore\nLEFT JOIN repairs_cte rc ON rc.ITEM = ifi.NUM\nLEFT JOIN lastCompletedDate_cte lcd ON lcd.ITEM = ifi.NUM AND lcd.RowNumber = 1\nLEFT JOIN contractRev_cte cr ON cr.ITEM = ifi.NUM\nLEFT JOIN timeUt_cte tu ON tu.ITEM = ifi.NUM\nLEFT JOIN repairDays_cte rd ON rd.ITEM = ifi.NUM\n\nWHERE ifi.SerialNumber <> ''\nAND (ifi.QTY > 0 OR sa.ITEM IS NOT NULL)\nAND ipd.RowNumber = 1\nAND RIGHT(ifi.[KEY],2) <> 'RR'\n\nGROUP BY\n  ifi.[KEY], ifi.Header, ifi.NUM, ifi.[Name], ic.[Name], ifi.MANF, ifi.MODN, ifi.ModelYear, ifi.SerialNumber, ipd.PurchaseDate, ipd.PONumber, ipd.OEC, ipd.ExtraCost, ifi.CurrentStore, CASE WHEN pf.Store <> '001' THEN RIGHT(pf.STORE_NAME, LEN(pf.STORE_NAME) - 4) ELSE pf.STORE_NAME END  \n, it.TypeDescrip, ifi.MTOT, ifi.CURV, ifi.DEPA, ifi.PURP, ifi.UserDefined1\n, CASE WHEN rc.ITEM IS NOT NULL AND lcd.RowNumber = 1 AND lcd.LastCompletedDate IS NOT NULL THEN CAST(DATEDIFF(d, lcd.LastCompletedDate,GETDATE()) AS VARCHAR(20))\n\tWHEN rc.ITEM IS NOT NULL AND lcd.LastCompletedDate IS NULL THEN CAST('Down' AS VARCHAR(5))\n\tELSE NULL END, lcd.MaintenanceType\n, cr.TotalRentalRevenue\n, tu.[TotalDistinct_UT]\n, IIF((cr.LastItemContractDate_current = '3333-12-31' OR GETDATE() BETWEEN cr.LastItemContractStartDate AND cr.LastItemContractDate_current),'On rent', CAST(DATEDIFF(d,cr.LastItemContractDate,GETDATE())AS VARCHAR(20)) )\n, rd.TotalDaysIRO, rd.TotalDaysIMO,ifi.QTY\n\n\nORDER BY RTRIM(LTRIM(ifi.Num))\n\n--DROP TABLE #DateRange\n\n\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table por.Inventory",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "KEY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "KEY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Serial_Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Serial_Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model_Year",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model_Year",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Age_In_Months",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "Age_In_Months",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Original_DOP",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "Original_DOP",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "NBV",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "NBV",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Accum_Depr",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Accum_Depr",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Acquisition_Cost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Acquisition_Cost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "PO_Number",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "PO_Number",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Extra_Cost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Extra_Cost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Current_Store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Current_Store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Category",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Category",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Type",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Type",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Hours",
+									"type": "Single",
+									"physicalType": "real"
+								},
+								"sink": {
+									"name": "Hours",
+									"type": "Single",
+									"physicalType": "real"
+								}
+							},
+							{
+								"source": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Legacy_ID",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Legacy_ID",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "30d_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "30d_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "90d_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "90d_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "180d_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "180d_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "R12_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "R12_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "YTD_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "YTD_TU",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "30d_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "30d_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "90d_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "90d_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "180d_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "180d_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "R12_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "R12_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "YTD_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "YTD_$Ut%",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "LTD_Revenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "LTD_Revenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "SP%_LTDTU",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "SP%_LTDTU",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SP%_Life_Down",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "SP%_Life_Down",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Last_Rent_In_Days",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Last_Rent_In_Days",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Total_Labor_Hours",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "Total_Labor_Hours",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "Total_Labor_Cost",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 38
+								},
+								"sink": {
+									"name": "Total_Labor_Cost",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 38
+								}
+							},
+							{
+								"source": {
+									"name": "Days_Since_Last_Down",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Days_Since_Last_Down",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Last_Down_Type",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Last_Down_Type",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "IRO_Totals",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IRO_Totals",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IRO_Days_Down",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IRO_Days_Down",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IRO_Labor_Parts_Cost",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 38
+								},
+								"sink": {
+									"name": "IRO_Labor_Parts_Cost",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 38
+								}
+							},
+							{
+								"source": {
+									"name": "IMO_Totals",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IMO_Totals",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IMO_Days_Down",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IMO_Days_Down",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IMO_Labor_PartsCost",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 38
+								},
+								"sink": {
+									"name": "IMO_Labor_PartsCost",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 38
+								}
+							},
+							{
+								"source": {
+									"name": "last_refresh_date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "last_refresh_date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "Store_Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Store_Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Item_Qty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "Item_Qty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Inventory"
+						}
+					}
+				]
+			},
+			{
+				"name": "Dimension_Lookup",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT id,sourcetablename,sourcedb FROM dbo.control_table_por where SubjectArea='Dimension POR SP' and enableaction=1 order by id",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Dimension",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Dimension_Lookup",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Dimension_Lookup').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Stored procedure",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "AuditLogStart",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": {
+									"value": "@item().sourcetablename",
+									"type": "Expression"
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "AuditLogStart",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_StartAuditLog_Briggs]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataFactoryName": {
+										"value": {
+											"value": "@pipeline().DataFactory",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ParentAuditID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"PipelineName": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerID": {
+										"value": {
+											"value": "@pipeline().TriggerId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerName": {
+										"value": {
+											"value": "@pipeline().TriggerName",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerType": {
+										"value": {
+											"value": "@pipeline().TriggerType",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Sourcedb": {
+										"value": {
+											"value": "@item().sourcedb",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"sourcetable": {
+										"value": {
+											"value": "@item().sourcetablename",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "SuccessAuditLog",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Stored procedure",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": "Success",
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "ErrorVar",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Stored procedure",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ErrorMessage",
+								"value": {
+									"value": "@activity('Stored procedure').Error.Message",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "FailureAuditLog",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "ErrorVar",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": {
+											"value": "@variables('ErrorMessage')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Update_control_por",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "SuccessAuditLog",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[USP_Control_Table_POR_LastDate]",
+								"storedProcedureParameters": {
+									"id_I_F": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Fact_Table_Lookup",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "ForEach_Stage_Procs",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select ID,Sourcetablename,sourcedb from dbo.control_table_por \nwhere SubjectArea='Report Fact POR SP' and processsequence=3 and enableaction=1\norder by id",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Fact_Tables",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Fact_Table_Lookup",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Fact_Table_Lookup').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Fact Stored Proc",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Fact_AuditLogStart",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": {
+									"value": "@item().Sourcetablename",
+									"type": "Expression"
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Fact_AuditLogStart",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_StartAuditLog_Briggs]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataFactoryName": {
+										"value": {
+											"value": "@pipeline().DataFactory",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ParentAuditID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"PipelineName": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerID": {
+										"value": {
+											"value": "@pipeline().TriggerId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerName": {
+										"value": {
+											"value": "@pipeline().TriggerName",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerType": {
+										"value": {
+											"value": "@pipeline().TriggerType",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Sourcedb": {
+										"value": {
+											"value": "@item().sourcedb",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"sourcetable": {
+										"value": {
+											"value": "@item().sourcetablename",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Fact_SuccessAuditLog",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Fact Stored Proc",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": "Success",
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Fact_ErrorVar",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Fact Stored Proc",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ErrorMessage",
+								"value": {
+									"value": "@activity('Fact Stored Proc').Error.Message",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Fact_FailureAuditLog",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Fact_ErrorVar",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": {
+											"value": "@variables('ErrorMessage')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Fact_Update_control_por",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Fact_SuccessAuditLog",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[USP_Control_Table_POR_LastDate]",
+								"storedProcedureParameters": {
+									"id_I_F": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Lookup_Stage_Procs_Fleet_And_OECNA",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "ForEach_Fact_Tables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select id,sourcetablename, sourcedb from dbo.control_table_por \nwhere SubjectArea='Report Stage POR SP' and processsequence=4 and enableaction=1\norder by id",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Stage_Procs_Fleet_And_OECNA",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_Stage_Procs_Fleet_And_OECNA",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_Stage_Procs_Fleet_And_OECNA').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Staging_Proc",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_AuditLogStart",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": {
+									"value": "@item().sourcetablename",
+									"type": "Expression"
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_AuditLogStart",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_StartAuditLog_Briggs]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataFactoryName": {
+										"value": {
+											"value": "@pipeline().DataFactory",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ParentAuditID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"PipelineName": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerID": {
+										"value": {
+											"value": "@pipeline().TriggerId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerName": {
+										"value": {
+											"value": "@pipeline().TriggerName",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineTriggerType": {
+										"value": {
+											"value": "@pipeline().TriggerType",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Sourcedb": {
+										"value": {
+											"value": "@item().sourcedb",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"sourcetable": {
+										"value": {
+											"value": "@item().sourcetablename",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_SuccessAuditLog",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_Proc",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": "Success",
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_ErrorVar",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Staging_Proc",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ErrorMessage",
+								"value": {
+									"value": "@activity('Staging_Proc').Error.Message",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Staging_FailureAuditLog",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_ErrorVar",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"DataLakePath": {
+										"value": null,
+										"type": "String"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": {
+											"value": "@variables('ErrorMessage')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Staging_Update_control_por",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Staging_SuccessAuditLog",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[USP_Control_Table_POR_LastDate]",
+								"storedProcedureParameters": {
+									"id_I_F": {
+										"value": {
+											"value": "@item().id",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Fact_Table_Lookup_Fleet_And_OECNA",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "ForEach_Stage_Procs_Fleet_And_OECNA",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select ID,Sourcetablename from dbo.control_table_por \nwhere SubjectArea='Report Fact POR SP' and processsequence=5 and enableaction=1\norder by id",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Fact_Tables_Fact_And_OECNA",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Fact_Table_Lookup_Fleet_And_OECNA",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Fact_Table_Lookup_Fleet_And_OECNA').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Fact Stored Proc1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": {
+									"value": "@item().Sourcetablename",
+									"type": "Expression"
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"ErrorMessage": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "MDP POR DataLoad_New"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-08-03T09:28:04Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

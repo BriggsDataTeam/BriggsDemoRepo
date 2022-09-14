@@ -1,0 +1,6 @@
+{
+	"name": "STAGE-POR-IntegrationRuntime",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}

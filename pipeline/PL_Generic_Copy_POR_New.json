@@ -1,0 +1,935 @@
+{
+	"name": "PL_Generic_Copy_POR_New",
+	"properties": {
+		"activities": [
+			{
+				"name": "POR_Lookup",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "Select Distinct ID,sourceDB,SourcetableName From dbo.control_table_por Where ProcessName = 'AzSQL_ADLS'  and sourcedb in ('POR','master') \nand EnableAction = 1  and table_added='Old' order by ID",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_POR_Load",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "POR_Lookup",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('POR_Lookup').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Lookup_POR",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select SourceQuery=''select '' +columnList+ '' from ''+ sourceDB+''.''+SourceSchemaName+''.''+SourcetableName\n,SourceDB\n,TargetContainer\n, TargetPath, TargetFile, FileFormat,targetstagetableschema,targetstagetablename\nfrom dbo.control_table_por\nwhere ID= ',item().ID)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "Briggs_MDW",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": "dbo",
+										"table_name": "user"
+									}
+								}
+							}
+						},
+						{
+							"name": "Copy_POR_ADLS",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Start_Table_Audit1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@activity('Lookup_POR').output.firstRow.SourceQuery\n",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"preCopyScript": {
+										"value": "@{concat('truncate table ',activity('Lookup_POR').output.firstRow.TargetStageTableSchema,'.',activity('Lookup_POR').output.firstRow.TargetStageTableName)}\n",
+										"type": "Expression"
+									},
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "POR_Dataset",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "Briggs_MDW",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": {
+											"value": "@activity('Lookup_POR').output.firstRow.TargetStageTableSchema",
+											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@activity('Lookup_POR').output.firstRow.TargetStageTableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Start_Table_Audit1",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Lookup_POR",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderStoredProcedureName": "[dbo].[proc_StartAuditLog_Briggs]",
+									"storedProcedureParameters": {
+										"ConfigTableID": {
+											"type": "Int32",
+											"value": {
+												"value": "@item().ID",
+												"type": "Expression"
+											}
+										},
+										"DataFactoryName": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().DataFactory",
+												"type": "Expression"
+											}
+										},
+										"ParentAuditID": {
+											"type": "Int64",
+											"value": {
+												"value": "@item().ID",
+												"type": "Expression"
+											}
+										},
+										"PipelineName": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().Pipeline",
+												"type": "Expression"
+											}
+										},
+										"PipelineRunID": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											}
+										},
+										"PipelineTriggerID": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().TriggerId",
+												"type": "Expression"
+											}
+										},
+										"PipelineTriggerName": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().TriggerName",
+												"type": "Expression"
+											}
+										},
+										"PipelineTriggerType": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().TriggerType",
+												"type": "Expression"
+											}
+										},
+										"Sourcedb": {
+											"type": "String",
+											"value": {
+												"value": "@item().sourceDB",
+												"type": "Expression"
+											}
+										},
+										"sourcetable": {
+											"type": "String",
+											"value": {
+												"value": "@item().SourcetableName",
+												"type": "Expression"
+											}
+										}
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "Briggs_MDW",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": "dbo",
+										"table_name": "user"
+									}
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "Failure_Audit_Log2",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Set variable1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().ID",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": {
+											"value": "@variables('ErrorMsg')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": "POR Source Table",
+										"type": "String"
+									},
+									"DataLakePath": {
+										"value": {
+											"value": "@activity('Lookup_POR').output.firstRow.TargetPath",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Set variable1",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Copy_POR_ADLS",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ErrorMsg",
+								"value": {
+									"value": "@activity('Copy_POR_ADLS').Error.Message",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Update_control_por1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Sp_ExecSuccessAudit11",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[USP_Control_Table_POR_LastDate]",
+								"storedProcedureParameters": {
+									"id_I_F": {
+										"value": {
+											"value": "@item().ID",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Sp_ExecSuccessAudit11",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Copy_POR_ADLS",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().ID",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": {
+											"value": "@activity('Copy_POR_ADLS').output.RowsRead",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"Status": {
+										"value": "Success",
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": "POR Source Table",
+										"type": "String"
+									},
+									"DataLakePath": {
+										"value": {
+											"value": "@activity('Lookup_POR').output.firstRow.TargetPath",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "POR_Lookup_New",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "Select Distinct ID ID1,sourceDB,SourcetableName From dbo.control_table_por Where ProcessName = 'AzSQL_ADLS'  and sourcedb in ('POR','master')\nand EnableAction = 1  and table_added='New' order by ID",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_POR_Load_New",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "POR_Lookup_New",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('POR_Lookup_New').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Lookup_POR_New",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select SourceQuery=''select '' +columnList+ '' from ''+ sourceDB+''.''+SourceSchemaName+''.''+SourcetableName\n,SourceDB\n,TargetContainer\n, TargetPath, TargetFile, FileFormat,targetstagetableschema,targetstagetablename\nfrom dbo.control_table_por\nwhere ID= ',item().ID1)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "Briggs_MDW",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": "dbo",
+										"table_name": "user"
+									}
+								}
+							}
+						},
+						{
+							"name": "Copy_POR_ADLS_New",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Start_Table_Audit1_New",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@activity('Lookup_POR_New').output.firstRow.SourceQuery\n",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "POR_Dataset",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "Briggs_MDW",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": {
+											"value": "@activity('Lookup_POR_New').output.firstRow.TargetStageTableSchema",
+											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@activity('Lookup_POR_New').output.firstRow.TargetStageTableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Start_Table_Audit1_New",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Lookup_POR_New",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderStoredProcedureName": "[dbo].[proc_StartAuditLog_Briggs]",
+									"storedProcedureParameters": {
+										"ConfigTableID": {
+											"type": "Int32",
+											"value": {
+												"value": "@item().ID1",
+												"type": "Expression"
+											}
+										},
+										"DataFactoryName": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().DataFactory",
+												"type": "Expression"
+											}
+										},
+										"ParentAuditID": {
+											"type": "Int64",
+											"value": {
+												"value": "@item().ID1",
+												"type": "Expression"
+											}
+										},
+										"PipelineName": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().Pipeline",
+												"type": "Expression"
+											}
+										},
+										"PipelineRunID": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											}
+										},
+										"PipelineTriggerID": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().TriggerId",
+												"type": "Expression"
+											}
+										},
+										"PipelineTriggerName": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().TriggerName",
+												"type": "Expression"
+											}
+										},
+										"PipelineTriggerType": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().TriggerType",
+												"type": "Expression"
+											}
+										},
+										"Sourcedb": {
+											"type": "String",
+											"value": {
+												"value": "@item().sourceDB",
+												"type": "Expression"
+											}
+										},
+										"sourcetable": {
+											"type": "String",
+											"value": {
+												"value": "@item().SourcetableName",
+												"type": "Expression"
+											}
+										}
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "Briggs_MDW",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": "dbo",
+										"table_name": "user"
+									}
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "Failure_Audit_Log2_New",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Set variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().ID1",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": null,
+										"type": "Int64"
+									},
+									"Status": {
+										"value": {
+											"value": "@variables('ErrorMsg1')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": "POR Source Table",
+										"type": "String"
+									},
+									"DataLakePath": {
+										"value": {
+											"value": "@activity('Lookup_POR_New').output.firstRow.TargetPath",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Set variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Copy_POR_ADLS_New",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ErrorMsg1",
+								"value": {
+									"value": "@activity('Copy_POR_ADLS_New').Error.Message",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Update_control_por1_New",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Sp_ExecSuccessAudit_New",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[USP_Control_Table_POR_LastDate]",
+								"storedProcedureParameters": {
+									"id_I_F": {
+										"value": {
+											"value": "@item().ID1",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Sp_ExecSuccessAudit_New",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Copy_POR_ADLS_New",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[proc_UpdateAuditLogg]",
+								"storedProcedureParameters": {
+									"ConfigTableID": {
+										"value": {
+											"value": "@item().ID1",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"PipelineRunID": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ReportType": {
+										"value": "POR",
+										"type": "String"
+									},
+									"RowsRead": {
+										"value": {
+											"value": "@activity('Copy_POR_ADLS_New').output.RowsRead",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"Status": {
+										"value": "Success",
+										"type": "String"
+									},
+									"Type_of_Load": {
+										"value": "POR Source Table",
+										"type": "String"
+									},
+									"DataLakePath": {
+										"value": {
+											"value": "@activity('Lookup_POR_New').output.firstRow.TargetPath",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"ErrorMsg": {
+				"type": "String"
+			},
+			"ErrorMsg1": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "MDP POR DataLoad_New"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-08-03T15:33:16Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

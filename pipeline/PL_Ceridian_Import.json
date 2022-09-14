@@ -1,0 +1,425 @@
+{
+	"name": "PL_Ceridian_Import",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetBearerToken",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "CreateTempStaging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://dfid.dayforcehcm.com/connect/token",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=password&companyId=siteprorentals&username=SiteProReportingUser&password=hG!m42AD&client_id=Dayforce.HCMAnywhere.Client"
+				}
+			},
+			{
+				"name": "Copy raw data to JSON",
+				"description": "stores just one day, in case of data dispute.",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "GetBearerToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"additionalHeaders": {
+							"Authorization": {
+								"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+								"type": "Expression"
+							}
+						},
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "GetCeridianToken",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_ADLS_JSON_1",
+						"type": "DatasetReference",
+						"parameters": {
+							"ContainerName": "main",
+							"Path": "Data/Sammons Industrial/SiteProRentals/POR/Ceridian/APIDataLakeReport",
+							"FileName": "APIDataLakeReport"
+						}
+					}
+				]
+			},
+			{
+				"name": "TransformToSink_staging",
+				"description": "sink to mdw",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "Copy raw data to JSON",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "GetDataToEncrypt",
+						"type": "DataFlowReference",
+						"datasetParameters": {
+							"GetDataToEncrypt": {
+								"ContainerName": "main",
+								"Path": "Data/Sammons Industrial/SiteProRentals/POR/Ceridian/APIDataLakeReport",
+								"FileName": "APIDataLakeReport"
+							}
+						}
+					},
+					"staging": {
+						"linkedService": {
+							"referenceName": "AzureBlobStorage_Parquet",
+							"type": "LinkedServiceReference"
+						},
+						"folderPath": "main/Data/Sammons Industrial/SiteProRentals/POR/Ceridian"
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "ExecuteSP",
+				"description": "[POR].[Load_Ceridian_EmployeeInformation]",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "TransformToSink_staging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[POR].[Load_Ceridian_EmployeeInformation]"
+				},
+				"linkedServiceName": {
+					"referenceName": "briggs-b-wus-syn-01-WorkspaceDefaultSqlServer",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": "briggsbetamdw"
+					}
+				}
+			},
+			{
+				"name": "CreateTempStaging",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "briggs-b-wus-syn-01-WorkspaceDefaultSqlServer",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": "briggsbetamdw"
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "SET ANSI_NULLS ON\r\n\r\n\r\nSET QUOTED_IDENTIFIER ON\r\n\r\nIF OBJECT_ID (N'POR.Ceridian_EmployeeInformation_staging', N'U') IS NOT NULL\r\nDROP TABLE POR.Ceridian_EmployeeInformation_staging;\r\n\r\nCREATE TABLE [POR].[Ceridian_EmployeeInformation_staging]\r\n(\r\n\t[EmployeeNumber] [NVARCHAR](10) NULL,\r\n\t[EmployeeLastName] [NVARCHAR](100) NULL,\r\n\t[EmployeeFirstName] [NVARCHAR](100) NULL,\r\n\t[EmployeeMiddleName] [NVARCHAR](50) NULL,\r\n\t[EmploymentStatus] [NVARCHAR](100) NULL,\r\n\t[EmployeeHireDate] [DATE] NULL,\r\n\t[EmployeeTerminationDate] [DATE] NULL,\r\n\t[JobName] [NVARCHAR](100) NULL,\r\n\t[JobTitle] [NVARCHAR](100) NULL,\r\n\t[OrgUnit] [NVARCHAR](100) NULL,\r\n\t[DepartmentName] [NVARCHAR](100) NULL,\r\n\t[ManagerName] [NVARCHAR](100) NULL,\r\n\t[PayType] [NVARCHAR](100) NULL,\r\n\t[PayClass] [NVARCHAR](100) NULL,\r\n\t[EmployeeGender] [NVARCHAR](10) NULL,\r\n\t[SSN4] [NVARCHAR](10) NULL,\r\n\t[LastLoadDate] [DATE] NULL\r\n)\r\nWITH\r\n(\r\n\tDISTRIBUTION = ROUND_ROBIN,\r\n\tCLUSTERED COLUMNSTORE INDEX\r\n)"
+						}
+					]
+				}
+			},
+			{
+				"name": "DB_CreateTableFailure",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "CreateTempStaging",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-24.centralus.logic.azure.com:443/workflows/ce605247ec3d441aa49633355f8cfd9a/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=4u7EFMoueVGeSUWsCQdMuUhNkpMSirU6tk7w8wDfS-Y",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('CreateTempStaging').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "GetBearerTokenFailure",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "GetBearerToken",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-24.centralus.logic.azure.com:443/workflows/ce605247ec3d441aa49633355f8cfd9a/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=4u7EFMoueVGeSUWsCQdMuUhNkpMSirU6tk7w8wDfS-Y",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('GetBearerToken').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "CopyRawDataToJSON_Failure",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Copy raw data to JSON",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-24.centralus.logic.azure.com:443/workflows/ce605247ec3d441aa49633355f8cfd9a/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=4u7EFMoueVGeSUWsCQdMuUhNkpMSirU6tk7w8wDfS-Y",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('Copy raw data to JSON').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "TransformToSink_stagingFailure",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "TransformToSink_staging",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-24.centralus.logic.azure.com:443/workflows/ce605247ec3d441aa49633355f8cfd9a/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=4u7EFMoueVGeSUWsCQdMuUhNkpMSirU6tk7w8wDfS-Y",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('TransformToSink_staging').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ExecuteSPFailure",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "ExecuteSP",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-24.centralus.logic.azure.com:443/workflows/ce605247ec3d441aa49633355f8cfd9a/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=4u7EFMoueVGeSUWsCQdMuUhNkpMSirU6tk7w8wDfS-Y",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('ExecuteSP').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ExecuteSPSuccess",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "ExecuteSP",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-05.centralus.logic.azure.com:443/workflows/dd38bc8975b24c73a8f69bf80e9036ca/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=GeLqWhOvtSho-lGrx1-BgSGweXdln7o7PQBl54-_f1g",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('ExecuteSP').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"folder": {
+			"name": "Other Vendors"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-08-19T19:12:43Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

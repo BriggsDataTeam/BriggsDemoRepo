@@ -1,0 +1,52 @@
+{
+	"name": "EmailSendFailure",
+	"properties": {
+		"activities": [
+			{
+				"name": "SendEmailOnFailure",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-08.centralus.logic.azure.com:443/workflows/b24c7e82a2c14446974f719cd87126c7/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Kf5uyDy7Il5uil24WpziKHFBOfPgNAqmNZ7fNZchaQ0",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{“EmailTo”: “@{pipeline().parameters.EmailTo}”,\n”Subject”: “An error has occurred in the @{pipeline().Pipeline}-pipeline”,\n”DataFactoryName”: “@{pipeline().DataFactory}”,\n”PipelineName”: “@{pipeline().Pipeline}”,\n”ActivityType”: “@{pipeline().parameters.ActivityType}”,\n”ErrorMessage”: “@{pipeline().parameters.errorMessage}”}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"EmailTo": {
+				"type": "string"
+			},
+			"ActivityType": {
+				"type": "string"
+			},
+			"ErrorMessage": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "annie"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-08-08T20:34:58Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

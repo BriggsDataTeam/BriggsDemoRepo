@@ -1,0 +1,6 @@
+{
+	"name": "STAGE-netsuite-IntegrationRuntime",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}

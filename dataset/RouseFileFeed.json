@@ -1,0 +1,24 @@
+{
+	"name": "RouseFileFeed",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "RouseSFTP",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "SftpLocation",
+				"fileName": "STP_pricingfile.txt",
+				"folderPath": "/Outbound"
+			},
+			"columnDelimiter": "|",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

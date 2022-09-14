@@ -1,0 +1,89 @@
+{
+	"name": "AzureSynapseAnalyticsConnector",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "briggs-b-wus-syn-01-WorkspaceDefaultSqlServer",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DBName": "briggsbetamdw"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [
+			{
+				"name": "EmployeeNumber",
+				"type": "nvarchar"
+			},
+			{
+				"name": "EmployeeLastName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "EmployeeFirstName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "EmployeeMiddleName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "EmploymentStatus",
+				"type": "nvarchar"
+			},
+			{
+				"name": "EmployeeHireDate",
+				"type": "date"
+			},
+			{
+				"name": "EmployeeTerminationDate",
+				"type": "date"
+			},
+			{
+				"name": "JobName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "JobTitle",
+				"type": "nvarchar"
+			},
+			{
+				"name": "OrgUnit",
+				"type": "nvarchar"
+			},
+			{
+				"name": "DepartmentName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ManagerName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "PayType",
+				"type": "nvarchar"
+			},
+			{
+				"name": "PayClass",
+				"type": "nvarchar"
+			},
+			{
+				"name": "EmployeeGender",
+				"type": "nvarchar"
+			},
+			{
+				"name": "SSN4",
+				"type": "nvarchar"
+			},
+			{
+				"name": "LastLoadDate",
+				"type": "date"
+			}
+		],
+		"typeProperties": {
+			"schema": "POR",
+			"table": "Ceridian_EmployeeInformation"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

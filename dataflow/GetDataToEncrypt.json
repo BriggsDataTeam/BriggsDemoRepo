@@ -1,0 +1,100 @@
+{
+	"name": "GetDataToEncrypt",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_ADLS_JSON_1",
+						"type": "DatasetReference"
+					},
+					"name": "GetDataToEncrypt"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "AzureSynapseAnalytics_CeridianEmployeeInformation_staging",
+						"type": "DatasetReference"
+					},
+					"name": "SinkThis"
+				}
+			],
+			"transformations": [
+				{
+					"name": "CeridianSPFlat"
+				},
+				{
+					"name": "Derivations"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          Data as (Rows as (Department_ShortName as string, DeptJob_ShortName as string, EmployeeEmploymentStatus_EmployeeNumber as integer, EmployeeManager_ManagerDisplayName as string, Employee_FirstName as string, Employee_Gender as string, Employee_HireDate as string, Employee_LastName as string, Employee_MiddleName as string, Employee_SocialSecurityNumber as integer, Employee_TerminationDate as string, EmploymentStatus_ShortName as string, Job_ShortName as string, OrgUnit_ShortName as string, PayClass_ShortName as string, PayType_ShortName as string)[], XRefCode as string),",
+				"          Paging as (Next as string)",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     documentForm: 'documentPerLine') ~> GetDataToEncrypt",
+				"GetDataToEncrypt foldDown(unroll(Data.Rows),",
+				"     mapColumn(",
+				"          EmployeeNumber = Data.Rows.EmployeeEmploymentStatus_EmployeeNumber,",
+				"          EmployeeLastName = Data.Rows.Employee_LastName,",
+				"          EmployeeFirstName = Data.Rows.Employee_FirstName,",
+				"          EmployeeMiddleName = Data.Rows.Employee_MiddleName,",
+				"          EmploymentStatus = Data.Rows.EmploymentStatus_ShortName,",
+				"          EmployeeHireDate = Data.Rows.Employee_HireDate,",
+				"          EmployeeTerminationDate = Data.Rows.Employee_TerminationDate,",
+				"          JobName = Data.Rows.Job_ShortName,",
+				"          JobTitle = Data.Rows.DeptJob_ShortName,",
+				"          OrgUnit = Data.Rows.OrgUnit_ShortName,",
+				"          DepartmentName = Data.Rows.Department_ShortName,",
+				"          ManagerName = Data.Rows.EmployeeManager_ManagerDisplayName,",
+				"          PayType = Data.Rows.PayType_ShortName,",
+				"          PayClass = Data.Rows.PayClass_ShortName,",
+				"          EmployeeGender = Data.Rows.Employee_Gender,",
+				"          SSN4 = Data.Rows.Employee_SocialSecurityNumber",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> CeridianSPFlat",
+				"CeridianSPFlat derive(EmployeeNumber = lpad(toString(EmployeeNumber),6,'0'),",
+				"          EmployeeHireDate = toDate(substring(EmployeeHireDate,0,10), 'yyyy-MM-dd'),",
+				"          EmployeeTerminationDate = toDate(substring(EmployeeTerminationDate,0,10), 'yyyy-MM-dd'),",
+				"          PayType = replace(PayType, '(', ' ('),",
+				"          SSN4 = right(toString(SSN4), 4),",
+				"          LastLoadDate = currentDate()) ~> Derivations",
+				"Derivations sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          EmployeeNumber as string,",
+				"          EmployeeLastName as string,",
+				"          EmployeeFirstName as string,",
+				"          EmployeeMiddleName as string,",
+				"          EmploymentStatus as string,",
+				"          EmployeeHireDate as date,",
+				"          EmployeeTerminationDate as date,",
+				"          JobName as string,",
+				"          JobTitle as string,",
+				"          OrgUnit as string,",
+				"          DepartmentName as string,",
+				"          ManagerName as string,",
+				"          PayType as string,",
+				"          PayClass as string,",
+				"          EmployeeGender as string,",
+				"          SSN4 as string,",
+				"          LastLoadDate as date",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     staged: true,",
+				"     preSQLs:['truncate table POR.Ceridian_EmployeeInformation_staging;'],",
+				"     errorHandlingOption: 'stopOnFirstError') ~> SinkThis"
+			]
+		}
+	}
+}

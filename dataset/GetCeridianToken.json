@@ -1,0 +1,19 @@
+{
+	"name": "GetCeridianToken",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "RestService_Ceridian",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": {
+				"value": "@concat('APIDataLakeReport?1e2fa368-49b6-4796-9606-7e5b5dd33cbe=',formatDateTime(subtractFromTime(utcNow(),5,'Hour'),'MM'),'%2F',formatDateTime(subtractFromTime(utcNow(),5,'Hour'),'dd'),'%2F',formatDateTime(subtractFromTime(utcNow(),5,'Hour'),'yyyy'),'%2012%3A00%3A00%20AM')",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

@@ -1,0 +1,400 @@
+{
+	"name": "PL_Rouse_asset_pricing",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetData",
+				"description": "ping sftp, get data",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"additionalColumns": [
+							{
+								"name": "ImportDate",
+								"value": {
+									"value": "@formatDateTime(subtractFromTime(utcNow(),5,'Hour'),'yyyy-MM-dd HH:mm:ss')",
+									"type": "Expression"
+								}
+							}
+						],
+						"storeSettings": {
+							"type": "SftpReadSettings",
+							"recursive": false,
+							"enablePartitionDiscovery": false,
+							"disableChunking": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table POR.RouseAssetPricing_staging;",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "EquipmentNumber",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "EquipmentNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Branch",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Branch",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "BranchName",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "BranchName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ListPrice",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "ListPrice",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Year",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Year",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CatClass",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "CatClass",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SerialNum",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "SerialNum",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "NBV",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "NBV",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "GP",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "GP",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "GPPercent",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "GPPercent",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "FMV",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "FMV",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "OLV",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "OLV",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "FLV",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "FLV",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "BottomQuartile",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "BottomQuartile",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "TopQuartile",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "TopQuartile",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ImportDate",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ImportDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "RouseFileFeed",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "RouseAssetPricing_staging"
+						}
+					}
+				]
+			},
+			{
+				"name": "ExecuteSP",
+				"description": "execute:  [POR].[Load_RouseAssetPricing]",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "GetData",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[POR].[Load_RouseAssetPricing]"
+				},
+				"linkedServiceName": {
+					"referenceName": "briggs-b-wus-syn-01-WorkspaceDefaultSqlServer",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": "briggsbetamdw"
+					}
+				}
+			},
+			{
+				"name": "EmailFailure_SFTP",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "GetData",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-24.centralus.logic.azure.com:443/workflows/ce605247ec3d441aa49633355f8cfd9a/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=4u7EFMoueVGeSUWsCQdMuUhNkpMSirU6tk7w8wDfS-Y",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('GetData').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "EmailFailure_Internal",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "ExecuteSP",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://prod-24.centralus.logic.azure.com:443/workflows/ce605247ec3d441aa49633355f8cfd9a/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=4u7EFMoueVGeSUWsCQdMuUhNkpMSirU6tk7w8wDfS-Y",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"Pipeline\":\"@{pipeline().Pipeline}\",\n    \"DataFactoryName\" : \"@{pipeline().DataFactory}\",\n    \"ActivityType\" : \"@{activity('ExecuteSP').ActivityType}\",\n    \"Runid\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"folder": {
+			"name": "Other Vendors"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-08-19T19:13:50Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,61 @@
+{
+	"name": "ResumeDB",
+	"properties": {
+		"activities": [
+			{
+				"name": "Resume_SQL_Pool",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://management.azure.com/subscriptions/@{pipeline().parameters.SubscriptionID}/resourceGroups/@{pipeline().parameters.Synapse_ResourceGroupName}/providers/Microsoft.Synapse/workspaces/@{pipeline().parameters.SynapseWorkspace}/sqlPools/@{pipeline().parameters.SynapseDedicatedSQLPool}/@{pipeline().parameters.Action}?api-version=2019-06-01-preview",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"body": "The",
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://management.azure.com/"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Action": {
+				"type": "string",
+				"defaultValue": "Resume"
+			},
+			"SynapseWorkspace": {
+				"type": "string",
+				"defaultValue": "briggs-b-wus-syn-01"
+			},
+			"Synapse_ResourceGroupName": {
+				"type": "string",
+				"defaultValue": "TalendResources"
+			},
+			"SynapseDedicatedSQLPool": {
+				"type": "string",
+				"defaultValue": "briggsbetamdw"
+			},
+			"SubscriptionID": {
+				"type": "string",
+				"defaultValue": "92e01a22-48f8-44af-9e12-81a013ff7882"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-06-08T05:30:16Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,4344 @@
+{
+	"name": "PL_POR_EXECUTIVE_STAGE_TABLES_LOAD",
+	"properties": {
+		"activities": [
+			{
+				"name": "EXECUTIVE_DASHBOARD_STAGE",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_STAGE_TRANSACTIONDETAILS",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "with [BI_VW_Items_SerializedFleet_CTE] as  (SELECT\nITF.BoughtUsed\n,ITF.[Qty]\n,ItemQty.DDT\n,ItemQty.Trans_Date\n, ItemQty.TypeName\n,CustomerType,[Customer Number],[Contract No],[Contract Date]\n,ItemQty.[KEY]\n,ItemQty.[TXTY]\n,ItemQty.TransContract\n, ItemQty.[OnRent]\n, ItemQty.[OffRent]\n, ItemQty.[IRO]\n, ItemQty.[IMO]\n, ItemQty.[ISO]\n, iif(ITF.QTY - (ItemQty.[OnRent] + ItemQty.[OffRent] + ItemQty.[IRO]) is null, ITF.Qty, ITF.QTY - (ItemQty.[OnRent] + ItemQty.[OffRent] + ItemQty.[IRO])) AS [Ready]\n, ITF.[KEY] AS [ItemKey]\n, ITF.[Name] AS [ItemName]\n, ITF.[Qty] AS [ItemQty]\n, ITF.[QYOT] AS [QtyOut]\n, ITF.[Type] AS [ItemType]\n, ITF.[Num] AS [ItemNum]\n, ITF.[CNTR] AS [ItemCntr]\n, ITF.[PURP] AS [ItemPurp]\n, ITF.[CurrentStore]\n, ITF.[HomeStore]\n, ITF.[Header] AS [ItemHeader]\n, ITF.[ReplacementCost] AS [ItemReplaceCost]\n, ITF.[BulkItem]\n, ITF.[Inactive]\n, ITF_h.[KEY] AS [HeaderKey]\n, ITF_h.[Name] AS [HeaderName]\n, ITF_h.[Num] AS [HeaderNum]\n, ITF_h.[ReplacementCost] AS [HeaderReplaceCost]\n, PF.[STORE_NAME] AS [CurrentStoreName]\n, ITC.[Name] AS [CategoryName]\n, ITF.[Category] AS [CategoryNumber]\n, ITD.[DivisionName]\n, ITC.[DivisionNumber] as [DivisionNumber]\n, ITF_OEC.OEC AS [OEC]\n\nFROM (((((ItemFile ITF\nLEFT JOIN ItemFile AS ITF_h ON ITF.[Header] = ITF_h.[KEY])\nLEFT JOIN ParameterFile PF ON ITF.[CurrentStore] = PF.[Store])\nLEFT JOIN ItemCategory ITC ON ITF.[Category] = ITC.[Category])\nLEFT JOIN ItemDivision ITD on ITC.[DivisionNumber] = ITD.[DivisionNumber])\nLEFT JOIN (\n\nSELECT  CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, cf.[CNUM] AS [Customer Number]\n, cf.[Name] AS [Customer Name]\n, t.[CNTR] AS [Contract No]\n, t.[DATE] AS [Contract Date]\n,TI.[TXTY]\n,TI.[ITEM],TI.DDT,T.[Date] as Trans_Date,ItemType.TypeDescrip as TypeName,CF.[KEY],T.CNTR AS TransContract,\n--SUM(iif(Left(TI.[CNTR],1)<>'r' and (not(TI.[TXTY] In ('RR','RX')) or TI.[TXTY] = 'RH' and TI.[DDT] > getdate()),[TI].[Qty],0)) AS OnRent,\nSUM(IIF(LEFT(TI.[CNTR],1)<>'r' AND (NOT(TI.[TXTY] IN ('RR','RX','RH')) OR (TI.txty = 'RH' AND TI.DDT > GETDATE())) ,[TI].[Qty],0)) AS OnRent,\nsum(iif(Left(TI.[CNTR],1)<>'r' and TI.[TXTY] = 'RH' and TI.[DDT] <= getdate(),[TI].[Qty],0)) AS OffRent,\nsum(iif(Left(TI.[CNTR],1)='r' and Not(TI.[TXTY] In ('RR','RX')),[TI].[Qty],0)) AS IRO,\nsum(iif(Left(TI.[CNTR],1)='r' and TI.[TXTY] In ('RR','RX'),[TI].[Qty],0)) AS IMO,\nsum(iif(cf.[KEY] LIKE 'REPAIRS-SERV%' and TI.SUBF = 1,TI.Qty,0)) AS ISO\nFROM ((TransactionItems TI\nINNER JOIN Transactions T ON TI.[CNTR] = T.[CNTR])\nINNER JOIN ItemFile ITF ON TI.[Item] = ITF.[Num]\nLEFT JOIN ItemType  ON ITF.TYPE = ItemType.Type)\nINNER JOIN CustomerFile CF ON T.[CUSN] = CF.[CNUM]\nWHERE Left(TI.[CNTR],1) Not In ('c','f','l','q','t','w') AND\nLeft(TI.[TXTY],1) = 'R' and\nLeft(T.[STAT],1) = 'O' and\nITF.Qty < 99000\nGROUP BY TI.[ITEM],TI.DDT,ItemType.TypeDescrip,CF.[CNUM],T.CNTR,T.[Date], \nt.PYMT \n, cf.[Key]\n, cf.[Name]\n, t.[CNTR]\n, t.[DATE] \n,TI.[TXTY]\n) AS ItemQty ON ITF.[Num] = ItemQty.[Item])\nLEFT JOIN (SELECT [ItemNumber] ,sum(([QuantityPurchased] - [QuantitySold]) * ([PriceEach] + [ExtraCharges])) AS OEC\nFROM [ItemPurchaseDetail]\nWHERE [Disposed] = 0\nGROUP BY [ItemNumber]) AS ITF_OEC ON ITF.[NUM] = ITF_OEC.[ItemNumber]\nWHERE not(ITF.[TYPE] in ('b','e','f','i','k','m','n','o','p','s','v','w'))\nAND ITF.Qty < 90000)\n\n\n-- select top 10 * from TransactionItems\n\n, final as (\nSELECT \nDDT,\nTrans_Date,\nitemkey\n,ItemName\n,CurrentStore\n,CurrentStoreName\n,CategoryName\n,CASE WHEN left(TypeName,5) = 'Sales' then '' \nWHEN [KEY] like 'Repairs-Maint' then '  *In Maint'\nWHEN trim(TransContract) = '' or (TransContract) IS NULL then '  Ready to Rent'\nWHEN left(TransContract,1) = 'r' then '  *In Repair'\nWHEN left(TransContract,1) = 't' then '  *In Transfer'\nELSE '  *On Rent' END AS [Status]\n\n\n,sum(OEC) as OEC\n,sum(OnRent) as OnRent\n, SUM(Ready * OEC) AS [AvailableOEC]\n, SUM(IRO * OEC) AS [InRepairOEC]\n, SUM(OffRent * OEC) AS [OffRentOEC]\n, SUM(OnRent * OEC) AS [OnRentOEC]\n, SUM(ItemQty * OEC) AS [TotalQtyOEC]\n, SUM(Ready) AS [AvailableQty]\n, SUM(IRO) AS [InRepairQty]\n, SUM(OffRent) AS [OffRentQty]\n, SUM(OnRent) AS [OnRentQty]\n, SUM(ItemQty) AS TotalItemQty\n,sum( case when VW.BoughtUsed = 0 then (Ready * OEC) else 0 end ) as New_Equipment\n,sum( case when VW.BoughtUsed = 1 then (Ready * OEC) else 0 end ) as Used_Equipment\n--,getdate()\n, switchoffset(sysdatetimeoffset(),'-05:00') AS [Snapshot_Date]\n,CustomerType,[Customer Number],[Contract No],[Contract Date]\n,[TXTY]\nFROM\n[BI_VW_Items_SerializedFleet_CTE] AS VW \nLEFT OUTER JOIN [ItemFile_TR] AS ITF_TR ON VW.[ItemNum] = ITF_TR.[NUM] AND ITF_TR.[Inactive] = 0\nLEFT OUTER JOIN [ItemCategory_TR] ITC_TR ON VW.[CategoryNumber] = ITC_TR.[Category] AND ITC_TR.[Inactive] = 0 \nLEFT OUTER JOIN [ItemDivision_TR] ITD_TR on VW.[DivisionNumber] = ITD_TR.[DivisionNumber] AND ITD_TR.[Inactive] = 0 \nWHERE\nVW.[Inactive] = 0 AND VW.[BulkItem] = 0\n--and CurrentStore=106\ngroup by DDT,itemkey,Trans_Date\n,ItemName\n,CurrentStore\n,CurrentStoreName\n,CategoryName,CustomerType,[Customer Number],[Contract No],[Contract Date]\n,CASE WHEN left(TypeName,5) = 'Sales' then '' \nWHEN [KEY] like 'Repairs-Maint' then '  *In Maint'\nWHEN trim(TransContract) = '' or (TransContract) IS NULL then '  Ready to Rent'\nWHEN left(TransContract,1) = 'r' then '  *In Repair'\nWHEN left(TransContract,1) = 't' then '  *In Transfer'\nELSE '  *On Rent' END\n,[TXTY]\n)\n\nselect  * from final",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "delete from [POR].[Executive_Dashboard_Stage] where snapshot_date = cast(switchoffset(sysdatetimeoffset(),'-05:00') as date);",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "DDT",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "DDT",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "itemkey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "itemkey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CurrentStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CurrentStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CurrentStoreName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CurrentStoreName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OnRent",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OnRent",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "AvailableOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "AvailableOEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "InRepairOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "InRepairOEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OffRentOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OffRentOEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OnRentOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OnRentOEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "TotalQtyOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalQtyOEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "AvailableQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "AvailableQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "InRepairQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "InRepairQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OnRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OnRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "TotalItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "New_Equipment",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "New_Equipment",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "Used_Equipment",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "Used_Equipment",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "Snapshot_Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Snapshot_Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "Trans_Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Trans_Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Stage"
+						}
+					}
+				]
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_EQUIPMENT_STAGE",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "--USED Equipment\nSELECT\n  saf.Store\n, CAST(saf.DATE AS DATE) AS [Date]\n, CAST(ABS(ti.PRIC - ti.DiscountAmount)*ti.QTY AS DECIMAL(18,2)) AS UsedEquipmentRevenue\n, CAST(ABS(saf.PurchaseCost - saf.Depreciation)*ti.QTY AS DECIMAL(18,3)) AS UsedEquipmentCost\n, NULL AS NewEquipmentRevenue\n, NULL AS NewEquipmentCost\n, CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, cf.[CNUM] AS [Customer Number]\n, cf.[Name] AS [Customer Name]\n, t.[CNTR] AS [Contract No]\n, t.[DATE] AS [Contract Date]\n, ti.[TXTY]\n, ifi.[Name] AS ItemName\n, ifi.[Key] As [ItemKey]\n, ifi.MANF As [Make]\n, ifi.MODN As [Model]\n, ifi.ModelYear\n, ic.[Name] AS CategoryName\n\nFROM POR.dbo.SoldAssetFile saf\nJOIN POR.dbo.Transactions t ON t.CNTR = saf.CNTR\nJOIN POR.dbo.TransactionItems ti ON ti.CNTR = saf.CNTR AND saf.ItemNo = ti.ITEM\nJOIN POR.dbo.ItemFile ifi ON ifi.[NUM] = ti.ITEM\nJOIN POR.dbo.ItemCategory ic ON ic.Category = ifi.Category\nJOIN POR.dbo.CustomerFile cf ON cf.CNUM = saf.CustNo\nWHERE ti.TXTY = 'SA'\nAND ti.QTY <> 0\n\nUNION ALL\n\n--NEW Equipment\nSELECT\n  tca.Store\n, CAST(tca.Date AS DATE) AS [Date]\n, NULL AS UsedEquipmentRevenue\n, NULL AS UsedEquipmentCost\n, CAST(ABS((ti.PRIC - ti.DiscountAmount))*ti.QTY AS DECIMAL(18,2)) AS NewEquipmentRevenue\n, CAST(ABS((ipd.PriceEach + ipd.ExtraCharges))*ti.QTY AS DECIMAL(18,3)) AS NewEquipmentCost\n, CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, cf.[CNUM] AS [Customer Number]\n, cf.[Name] AS [Customer Name]\n, t.[CNTR] AS [Contract No]\n, t.[DATE] AS [Contract Date]\n, TI.[TXTY]\n, ifi.[Name] AS ItemName\n, ifi.[Key] As [ItemKey]\n, ifi.MANF As [Make]\n, ifi.MODN As [Model]\n, ifi.ModelYear\n, ic.[Name] AS CategoryName\n\nFROM POR.dbo.TotalsContractsAccrual tca\nJOIN POR.dbo.Transactions t ON t.CNTR = tca.CNTR\nJOIN POR.dbo.TransactionItems ti ON ti.CNTR = tca.CNTR\nJOIN POR.dbo.ItemFile ifi ON ifi.[NUM] = ti.ITEM\nJOIN POR.dbo.ItemCategory ic ON ic.Category = ifi.Category\nJOIN POR.dbo.CustomerFile cf ON cf.CNUM = tca.Cusn\nJOIN POR.dbo.ItemPurchaseDetail ipd ON ipd.[ItemNumber] = ifi.NUM AND ipd.QuantitySold >0\nWHERE ti.TXTY = 'SS'\nAND ifi.Asset=0\nAND (ifi.SerialNumber <> '')\nAND (tca.SaleTx <> 0 OR tca.SaleNT <> 0)\nAND ti.QTY <> 0",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table [POR].[Executive_Dashboard_Equipment_Stage];",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "Store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "UsedEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "UsedEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "UsedEquipmentCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "UsedEquipmentCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "NewEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "NewEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "NewEquipmentCost",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "NewEquipmentCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Equipment_Stage"
+						}
+					}
+				]
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_RENT_STAGE",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_EQUIPMENT_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "WITH v_CTE AS (\n\nSELECT store,sum([TCA].[RentTX] + [TCA].[RentNT]) AS Rent,\n\n       sum([TCA].[SaleTX] + [TCA].[SaleNT] - ISNULL(dp.DelPUamt,0)) AS Sale,  --subtract out Delivery/PU type 4 transactionitems\n\ntca.[Date] AS PostedDate, sum(dp.Purchase_Price) as Purchase_Price, sum(dp.Current_Book_Price) as Current_Book_Price, dp.CustomerType, dp.[Customer Number],\ndp.[Contract No], dp.[Contract Date],dp.[TXTY]\n\nFROM POR.dbo.TotalsContractsAccrual tca\n\nLEFT JOIN (\n\n       SELECT ti.CNTR, SUM(ti.PRIC) AS DelPUamt, SUM(ifi.PURP) as Purchase_Price, \n\t   SUM(ifi.CURV) as Current_Book_Price,CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, cf.[CNUM] AS [Customer Number]\n, cf.[Name] AS [Customer Name]\n, t.[CNTR] AS [Contract No]\n, t.[DATE] AS [Contract Date]\n,TI.[TXTY]\n\n       FROM POR.dbo.TransactionItems ti\n\t   JOIN POR.dbo.Transactions t ON ti.CNTR = t.CNTR\n       INNER JOIN CustomerFile CF ON T.[CUSN] = CF.[CNUM]\n       JOIN POR.dbo.ItemFile ifi ON ifi.NUM = ti.ITEM\n\n       WHERE (ifi.Category = 4 --Delivery/PU\n\n         OR (ifi.SerialNumber <> '' AND ifi.Asset = 0))  --non-asset with serialnumber <-- ******** Not sure this works, see CNTR 103027A ** NEED TO ASK MICHAEL\n\n                      --Select * from POR.dbo.Itemfile where [key] = '6965'\n\n                       --SELECT * from POR.dbo.Itemfile where SerialNumber <> '' AND Asset = 0  <-- these 47 just might be marked incorrectly\n\n          GROUP BY ti.CNTR,CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END \n, cf.[CNUM]\n, cf.[Name]\n, t.[CNTR]\n, t.[DATE] \n,TI.[TXTY]\n\n) dp ON dp.CNTR = tca.CNTR\n\ngroup by store, tca.Date, dp.CustomerType, dp.[Customer Number],\ndp.[Contract No], dp.[Contract Date],dp.[TXTY]\n\n)\n\nSELECT store,SUM(Rent) AS RentSum, SUM(Sale) AS SaleSum, \ncast(PostedDate as date) as Posted_Date,isnull(sum(Purchase_Price),0) as Purchase_Price,\nisnull(sum(Current_Book_Price),0) as Current_Book_Price,CustomerType, [Customer Number],\n[Contract No], [Contract Date],[TXTY]\n\nFROM v_CTE\ngroup by store,PostedDate,CustomerType, [Customer Number],\n[Contract No], [Contract Date],[TXTY]",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table  [POR].[Executive_Dashboard_Rent_Stage];",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "RentSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "RentSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "SaleSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "SaleSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Posted_Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "Posted_Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "Purchase_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Purchase_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Current_Book_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Current_Book_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Rent_Stage"
+						}
+					}
+				]
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_SALES_STAGE",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_RENT_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT SoldItems.Batch,SoldItems.[Date], SoldItems.CNTR, SoldItems.ItemNo, SoldItems.CustNo, SoldItems.Amount, SoldItems.Qty, SoldItems.[Name], SoldItems.PurchaseCost,\n\n       SoldItems.Depreciation, SoldItems.PurchaseDate, SoldItems.Store, SoldItems.Asset, SoldItems.Header, SoldItems.CustomerName,\n\n          SoldItems.[KEY],\n\n           iif(ItemTL.ItemName is Null, SoldItems.ItemName,ItemTL.ItemName) as ItemName,\n\t\t   SoldItems.BoughtUsed,\n\n\n           SoldItems.ItemQty, SoldItems.PartNumber, SoldItems.ItemNum, SoldItems.MANF, SoldItems.MODN,\n\n          iif(ItemTL.UserDefined1 is Null, SoldItems.UserDefined1,ItemTL.UserDefined1) as UserDefined1,\n\n          SoldItems.INC3, SoldItems.REPC2, SoldItems.GLAccount, SoldItems.HomeStore, SoldItems.CurrentStore, SoldItems.SerialNumber,\n\n         iif(CatTL.CatName is Null,SoldItems.CategoryName,CatTL.CatName) as CategoryName,\n\n          SoldItems.AssetGL,\n\n          iif(DivTL.DivisionName is Null, SoldItems.DivisionName,DivTL.DivisionName) as DivisionName,\n\n           SoldItems.NoPrintItemNo,\n\n          SoldItems.GLEquip, SoldItems.Category, SoldItems.DivisionNumber,\n\t\t -- getdate() \n\t\t  switchoffset(sysdatetimeoffset(),'-05:00')  as Snapshot_Date, \n\t\t  SoldItems.CustomerType, SoldItems.[Contract Date], SoldItems.[TXTY]\n\nfrom (\n\n \n\nSELECT SA.Batch,SA.[Date], SA.CNTR, SA.ItemNo,ITF.BoughtUsed ,SA.CustNo, SA.Amount, SA.Qty, SA.[Name], SA.PurchaseCost,\n\n       SA.Depreciation, SA.PurchaseDate, SA.Store, SA.Asset, ITF.Header, CF.[Name] AS CustomerName,\n\n          ITF.[KEY], ITF.[Name] as ItemName, ITF.QTY as ItemQty, ITF.PartNumber, ITF.NUM as ItemNum, ITF.MANF, ITF.MODN,\n\n          ITF.UserDefined1, ITF.INC3, ITF.REPC2, ITF.GLAccount, ITF.HomeStore, ITF.CurrentStore, ITF.SerialNumber,\n\n          CAT.[Name] as CategoryName, CAT.AssetGL, ID.DivisionName, PF.NoPrintItemNo,\n\n          AC.Equipment as GLEquip, ITF.Category, ID.DivisionNumber, CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, t.[DATE] AS [Contract Date]\n,TI.[TXTY]\n\n         \n\n \n\nFROM SoldAssetFile SA\n\n      LEFT JOIN ItemFile ITF ON SA.ItemNo = ITF.NUM\n\n         LEFT JOIN ItemCategory CAT ON ITF.Category = CAT.Category \n\n         LEFT JOIN ItemDivision ID ON CAT.DivisionNumber = ID.DivisionNumber\n\n      LEFT JOIN CustomerFile CF ON SA.CustNo = CF.CNUM\n\t  JOIN POR.dbo.Transactions t ON CF.CNUM = t.CUSN\n\t  join POR.dbo.TransactionItems ti on t.CNTR = ti.CNTR\n\n         LEFT JOIN ParameterFile PF ON ITF.HomeStore = PF.[Store]\n\n         LEFT JOIN AccountNumbers AC ON SA.Store = AC.Store  ) as SoldItems\n\n \n\n--WHERE Batch >={?BegBatch} and\n\n--      Batch <= {?EndBatch} and\n\n--      ('{?CustNo}' = '*' OR SA.CustNo = '{?CustNo}')  AND\n\n--      ('{?Header}' = '*' OR ITF.Header = '{?Header}' ) AND\n\n--      ('{?ItemNo}' = '*' OR SA.ItemNo = '{?ItemNo}')\n\n--\n\n--) as SoldItems\n\n \n\nLeft Join\n\n \n\n(SELECT TL.[NUM], TL.[Name] as ItemName, TL.INST, TL.Style1 , TL.Style2, TL.Style3 , TL.WebLink ,TL.VehicleType ,\n\nTL.[DescriptionLong],TL.WebGroup , TL.[Group] as ItemGroup,TL.[LOOKUP]  ,TL.[UserDefined1] , TL.[UserDefined2]\n\nFROM TranslationNames TN \n\nLEFT JOIN ItemFile_Tr TL on TN.LanguageCode = TL.Languagecode\n\n--WHERE TN.LanguageCode IS NULL OR TN.LanguageCode = '{?LanguageCode}'\n\n) AS ItemTL ON SoldItems.ItemNum = ItemTL.Num\n\nLeft Join\n\n \n\n(SELECT TL.Category,  TL.[Name] as CatName,TL.WebTags, TL.Style1 as CatStyle1 ,TL.Style2 as CatStyle2, TL.Style3 as CatStyle3 \n\nFROM TranslationNames TN\n\nLEFT JOIN ItemCategory_Tr TL ON TN.LanguageCode  = TL.Languagecode \n\n--WHERE TN.LanguageCode IS NULL OR TN.LanguageCode = '{?LanguageCode}' \n\n) AS CatTL ON SoldItems.Category = CatTL.Category\n\nLeft Join\n\n \n\n(  SELECT  TL.DivisionNumber,  TL.DivisionName   \n\nFROM TranslationNames TN  \n\nLEFT JOIN ItemDivision_Tr TL ON TN.LanguageCode  = TL.Languagecode\n\n--WHERE TN.LanguageCode IS NULL OR TN.LanguageCode = '{?LanguageCode}'\n\n) AS DivTL ON SoldItems.DivisionNumber = DivTL.DivisionNumber",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "delete from [POR].[Executive_Dashboard_Sales_Stage] where snapshot_date=cast(switchoffset(sysdatetimeoffset(),'-05:00') as date);",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "Batch",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "Batch",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "CNTR",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CNTR",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemNo",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemNo",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CustNo",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CustNo",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Amount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Amount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Qty",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "Qty",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "PurchaseCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "PurchaseCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Depreciation",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Depreciation",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "PurchaseDate",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "PurchaseDate",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "Store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Asset",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "Asset",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CustomerName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "KEY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "KEY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "BoughtUsed",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "BoughtUsed",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "PartNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "PartNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemNum",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemNum",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "MANF",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "MANF",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "MODN",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "MODN",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "UserDefined1",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "UserDefined1",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "INC3",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "INC3",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "REPC2",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "REPC2",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "GLAccount",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "GLAccount",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "HomeStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "HomeStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CurrentStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CurrentStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SerialNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "SerialNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "AssetGL",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "AssetGL",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DivisionName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DivisionName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "NoPrintItemNo",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "NoPrintItemNo",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "GLEquip",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "GLEquip",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Category",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "Category",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "DivisionNumber",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "DivisionNumber",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Snapshot_Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Snapshot_Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Sales_Stage"
+						}
+					}
+				]
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_EQUIPMENT_DELIVERY_STAGE",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_SALES_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \n\n--Below are Transaction Level Items\n\n  CASE WHEN pf.Store <> '001' THEN RIGHT(pf.STORE_NAME, LEN(pf.STORE_NAME) - 4) ELSE pf.STORE_NAME END AS [Store Name]\n\n, t.[STR] AS [Store No]\n\n, CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n\n, cf.[CNUM] AS [Customer Number]\n\n, cf.[Name] AS [Customer Name]\n\n, t.JOBN AS [Job Name]\n\n, t.JBPO AS [Job PO#] \n\n, t.JBID AS [Job #]\n\n, cjs.Description AS [Job Site Name]\n\n, ISNULL(cjs.SiteAddress,'') + ' ' + ISNULL(cjs.SiteCity,'') + ' ' + ISNULL(cjs.SiteZip,'') AS [Job Site Address]\n\n, t.DMG AS [Extended Protection Plan]\n\n, s.[Name] AS [Contract Salesman]\n\n, s2.[Name] AS [Customer Salesman]\n\n, o.OPNM AS [Created by Operator Name]\n\n, o2.OPNM AS [Assigned to Operator Name]\n\n, t.[DATE] AS [Contract Date]\n\n, t1.OriginalContractDate AS [Original Contract Date]\n\n, t.[CNTR] AS [Contract No]\n\n--Below are Item level details\n\n, CASE WHEN ti.TXTY = 'R' THEN 'RENT'\n\n       WHEN ti.TXTY = 'RR' THEN 'Returned'\n\n       WHEN ti.TXTY = 'RX' THEN 'Previously Returned'\n\n       WHEN ti.TXTY = 'RH' THEN 'Not Returned. Item on hold for pickup'\n\n       WHEN ti.TXTY = 'RD' THEN 'Not Returned. Demand letter sent'\n\n       WHEN ti.TXTY = 'RM' THEN 'Not Returned. Reservation Reminder letter sent'\n\n       WHEN ti.TXTY = 'RN' THEN 'Not Returned. Reminder letter sent'\n\n       WHEN ti.TXTY = 'RV' THEN 'Not Returned. Reservation Verify letter sent'\n\n       WHEN ti.TXTY = '' THEN 'Not Returned. No letters have been sent'\n\nELSE 'Sale Item' END AS [Item Status]\n\n, ifi.Header \n\n, ti.ITEM AS [Key] \n\n, ifi.Name\n\n, ifi.SerialNumber AS [Serial Number]\n\n, ifi.MANF AS [Make]\n\n, ifi.MODN AS [Model]\n\n, ifi.Modelyear AS [Model Year]\n\n, ti.PRIC AS [Amount Charged]\n\n, ti.DailyAmount AS [Daily]\n\n, ifi.RATE1 AS [Book Rate Daily]\n\n, ti.WeeklyAmount AS [Weekly]\n\n, ifi.RATE2 AS [Book Rate Weekly]\n\n, ti.MonthlyAmount AS [Monthly]\n\n, ifi.RATE3 AS [Book Rate Monthly]\n\n, CASE WHEN ti.Substatus = 7 THEN 'Substitute' ELSE '' END AS [Is Substitute]\n\n, CASE WHEN ti.Substatus = 7 THEN ti.Comments ELSE '' END AS [Substitution Comments]\n--,getdate() \n,switchoffset(sysdatetimeoffset(),'-05:00')  Report_Refresh_Date\n\n\n \n\nFROM POR.dbo.transactions t\n\nJOIN POR.dbo.TransactionItems ti ON ti.CNTR = t.CNTR\n\nJOIN POR.dbo.ItemFile ifi ON ifi.NUM = ti.ITEM\n\nJOIN POR.dbo.ParameterFile pf ON pf.Store = t.[STR]\n\nJOIN (SELECT t0.CNTR, t0.[DATE] AS OriginalContractDate FROM POR.dbo.Transactions t0 WHERE RIGHT(t0.CNTR,1) NOT LIKE '[A-Za-z]%') t1\n\n              ON t1.CNTR = CASE WHEN RIGHT(t.CNTR,1) LIKE '[A-Za-z]%' THEN LEFT(t.CNTR, LEN(t.CNTR)-1) ELSE t.CNTR END\n\nLEFT JOIN POR.dbo.ItemComments ic ON ic.NUM = ifi.NUM\n\nLEFT JOIN POR.dbo.CustomerFile cf ON cf.CNUM = t.CUSN\n\nLEFT JOIN POR.dbo.CustomerJobSite cjs ON cjs.Number = t.JobSite\n\nLEFT JOIN POR.dbo.Salesman s ON s.Number = t.Salesman\n\nLEFT JOIN POR.dbo.Salesman s2 ON s2.Number = cf.Salesman\n\nLEFT JOIN POR.dbo.OperatorId o ON o.OPNO = t.OperatorCreated\n\nLEFT JOIN POR.dbo.OperatorId o2 ON o2.OPNO = t.OperatorAssigned\n\n \n\nWHERE LEFT(t.STAT,1) = 'O'\n\nAND LEFT(t.CNTR,1) NOT IN ('q','r','s','t')\n\nAND (ifi.TYPE IN ('T','H','U','V','A','L','R','N','K','D') -- Include Rental types & delivery/pickup charges only; exclude sales, diesel, etc.\n\nOR ifi.Name LIKE 'Delivery%' --2. Sale items to include\n\nOR ifi.Name LIKE 'Pickup%' --3. Sale items to include\n\n)\n\nAND t.STAT NOT IN ('OJ','OH','RR','OR')\n\nAND ti.TXTY <> 'RR'\n\nORDER BY [Store Name], cf.[NAME], t.[DATE] ASC, t.CNTR, s.[Name]",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table  [POR].[Executive_Dashboard_Equipment_Delivery_Stage];",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "Store Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Store Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Store No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Store No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Job Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Job Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Job PO#",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Job PO#",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Job #",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Job #",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Job Site Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Job Site Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Job Site Address",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Job Site Address",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Extended Protection Plan",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Extended Protection Plan",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Salesman",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Contract Salesman",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Salesman",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Salesman",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Created by Operator Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Created by Operator Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Assigned to Operator Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Assigned to Operator Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "Original Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Original Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Item Status",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Item Status",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Key",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Key",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Serial Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Serial Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model Year",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model Year",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Amount Charged",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Amount Charged",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Daily",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Daily",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Book Rate Daily",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Book Rate Daily",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Weekly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Weekly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Book Rate Weekly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Book Rate Weekly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Monthly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Monthly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Book Rate Monthly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Book Rate Monthly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Is Substitute",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "Is Substitute",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Substitution Comments",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Substitution Comments",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Report_Refresh_Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Report_Refresh_Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Equipment_Delivery_Stage"
+						}
+					}
+				]
+			},
+			{
+				"name": "PROC_LOAD_EXECUTIVE_DASHBOARD_FLEET",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_EQUIPMENT_DELIVERY_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[por].[proc_load_executive_dashboard_fleet]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "PROC_LOAD_EXECUTIVE_DASHBOARD_OECNA",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_EQUIPMENT_DELIVERY_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[por].[proc_load_executive_dashboard_oecna]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_RENT_STAGE_Detail",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "WITH v_CTE AS (\n\nSELECT store,sum([TCA].[RentTX] + [TCA].[RentNT]) AS Rent,\n\n       sum([TCA].[SaleTX] + [TCA].[SaleNT] - ISNULL(dp.DelPUamt,0)) AS Sale,  --subtract out Delivery/PU type 4 transactionitems\n\ntca.[Date] AS PostedDate, sum(dp.Purchase_Price) as Purchase_Price, sum(dp.Current_Book_Price) as Current_Book_Price, dp.CustomerType, dp.[Customer Number],\ndp.[Contract No], dp.[Contract Date],dp.[TXTY],dp.ItemKey,dp.ItemName,dp.Make,dp.Model,dp.ModelYear,dp.categoryname\n\nFROM POR.dbo.TotalsContractsAccrual tca\n\nLEFT JOIN (\n\n       SELECT ti.CNTR, SUM(ti.PRIC) AS DelPUamt, SUM(ifi.PURP) as Purchase_Price, \n\t   SUM(ifi.CURV) as Current_Book_Price,CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, cf.[CNUM] AS [Customer Number]\n, cf.[Name] AS [Customer Name]\n, t.[CNTR] AS [Contract No]\n, t.[DATE] AS [Contract Date]\n,TI.[TXTY],ifi.[Name] ItemName,ifi.[Key] As [ItemKey],ifi.MANF As [Make],\nifi.MODN As [Model],\nifi.ModelYear,ic.[Name] categoryname\n       FROM POR.dbo.TransactionItems ti\n\t   JOIN POR.dbo.Transactions t ON ti.CNTR = t.CNTR\n       INNER JOIN CustomerFile CF ON T.[CUSN] = CF.[CNUM]\n       JOIN POR.dbo.ItemFile ifi ON ifi.NUM = ti.ITEM\n\t   JOIN POR.dbo.ItemCategory ic ON ifi.Category = ic.Category\n       WHERE (ifi.Category = 4 --Delivery/PU\n\n         OR (ifi.SerialNumber <> '' AND ifi.Asset = 0))  --non-asset with serialnumber <-- ******** Not sure this works, see CNTR 103027A ** NEED TO ASK MICHAEL\n\n                      --Select * from POR.dbo.Itemfile where [key] = '6965'\n\n                       --SELECT * from POR.dbo.Itemfile where SerialNumber <> '' AND Asset = 0  <-- these 47 just might be marked incorrectly\n\n          GROUP BY ti.CNTR,CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END \n, cf.[CNUM]\n, cf.[Name]\n, t.[CNTR]\n, t.[DATE] \n,TI.[TXTY],ifi.[Name] ,ifi.[Key] ,ifi.MANF ,ic.[Name],\nifi.MODN ,ifi.ModelYear\n\n) dp ON dp.CNTR = tca.CNTR\n\ngroup by store, tca.Date, dp.CustomerType, dp.[Customer Number],\ndp.[Contract No], dp.[Contract Date],dp.[TXTY],dp.ItemKey,dp.ItemName,dp.Make,dp.Model,dp.ModelYear,dp.categoryname\n\n)\n\nSELECT store,SUM(Rent) AS RentSum, SUM(Sale) AS SaleSum, \ncast(PostedDate as date) as Posted_Date,isnull(sum(Purchase_Price),0) as Purchase_Price,\nisnull(sum(Current_Book_Price),0) as Current_Book_Price,CustomerType, [Customer Number],\n[Contract No], [Contract Date],[TXTY],ItemKey,ItemName,Make,Model,ModelYear,categoryname\n\nFROM v_CTE\ngroup by store,PostedDate,CustomerType, [Customer Number],\n[Contract No], [Contract Date],[TXTY],ItemKey,ItemName,Make,Model,ModelYear,categoryname\n\n\n\n--select * from [POR]..[ItemCategory]",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table  [POR].[Executive_Dashboard_Rent_Stage_Detail];",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "RentSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "RentSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "SaleSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "SaleSum",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Posted_Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "Posted_Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "Purchase_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Purchase_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Current_Book_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Current_Book_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "categoryname",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Rent_Stage_Detail"
+						}
+					}
+				]
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_EQUIPMENT_STAGE_Detail",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_RENT_STAGE_Detail",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \nstore,cast(tca.[date] as date) as date,\n  ISNULL(SUM(CASE WHEN ti.TXTY = 'SA' AND ifi.Asset = 1 AND (tca.AssetTx <> 0 OR tca.AssetNT <> 0) THEN ti.PRIC  END), '')\n  AS UsedEquipmentRevenue,\n  --   ISNULL(SUM(CASE WHEN ti.TXTY = 'SA' AND ifi.Asset = 1 AND (tca.AssetTx <> 0 OR tca.AssetNT <> 0) THEN ifi.PURP  END), '')\n  --AS UsedEquipmentCost\n\n   ISNULL(SUM(CASE WHEN ti.TXTY = 'SA' AND ifi.Asset = 1 AND (tca.AssetTx <> 0 OR tca.AssetNT <> 0) THEN ipd.PriceEach+ipd.ExtraCharges  END), '')\n  AS UsedEquipmentCost\n  ,\n  ISNULL(SUM(CASE WHEN ti.TXTY = 'SS' AND \nifi.Asset = 0 AND ifi.SerialNumber <> '' AND (tca.SaleTx <> 0 OR tca.SaleNT <> 0) THEN ti.PRIC  END), '')\nAS NewEquipmentRevenue,\n\n-- ISNULL(SUM(CASE WHEN ti.TXTY = 'SS' AND \n--ifi.Asset = 0 AND ifi.SerialNumber <> '' AND (tca.SaleTx <> 0 OR tca.SaleNT <> 0) THEN ifi.PURP  END), '')\n--AS NewEquipmentCost,\n\n ISNULL(SUM(CASE WHEN ti.TXTY = 'SS' AND \nifi.Asset = 0 AND ifi.SerialNumber <> '' AND (tca.SaleTx <> 0 OR tca.SaleNT <> 0) THEN ipd.PriceEach+ipd.ExtraCharges  END), '')\nAS NewEquipmentCost,\n\nsum(ifi.purp) as Purchase_Price, sum(ifi.curv) as Current_Book_Price\n,CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, cf.[CNUM] AS [Customer Number]\n, cf.[Name] AS [Customer Name]\n, t.[CNTR] AS [Contract No]\n, t.[DATE] AS [Contract Date]\n,TI.[TXTY]\n, ifi.[Name] ItemName,ifi.[Key] As [ItemKey],ifi.MANF As [Make],\nifi.MODN As [Model],\nifi.ModelYear,ic.[Name] categoryname\nFROM POR.dbo.TotalsContractsAccrual tca\nJOIN POR.dbo.Transactions t ON t.CNTR = tca.CNTR\nJOIN POR.dbo.TransactionItems ti ON ti.CNTR = t.CNTR\nJOIN POR.dbo.ItemFile ifi ON ifi.NUM = ti.ITEM\nINNER JOIN por.dbo.CustomerFile CF ON T.[CUSN] = CF.[CNUM]\nJOIN POR.dbo.ItemCategory ic ON ifi.Category = ic.Category\nJOIN POR.dbo.ItemPurchaseDetail ipd ON ipd.[ItemNumber] = ifi.NUM\ngroup by store,cast(tca.[date] as date)  \n,CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END \n, cf.[CNUM]\n, cf.[Name]\n, t.[CNTR]\n, t.[DATE] \n,TI.[TXTY],ifi.[Name] ,ifi.[Key] ,ifi.MANF ,ic.[Name],\nifi.MODN ,ifi.ModelYear",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table [POR].[Executive_Dashboard_Equipment_Stage_Detail];",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "store",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "date",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "UsedEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "UsedEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "UsedEquipmentCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "UsedEquipmentCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "NewEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "NewEquipmentRevenue",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "NewEquipmentCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "NewEquipmentCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Purchase_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Purchase_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Current_Book_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "Current_Book_Price",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Number",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Customer Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Customer Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Contract No",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Contract Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "categoryname",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Equipment_Stage_Detail"
+						}
+					}
+				]
+			},
+			{
+				"name": "PROC_LOAD_EXECUTIVE_DASHBOARD_FLEET_SUMMARY",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_EQUIPMENT_DELIVERY_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[por].[proc_load_executive_dashboard_fleet_summary]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "PROC_LOAD_EXECUTIVE_DASHBOARD_OECNA_SUMMARY",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_EQUIPMENT_DELIVERY_STAGE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[por].[proc_load_executive_dashboard_oecna_summary]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_STAGE_SUMMARY",
+				"description": "match POR system dashboard.  \nuse view query behind widget.",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n  a.ItemKey\n, a.ItemNum\n, a.ItemName\n, a.ItemType\n, a.Asset\n, a.ItemQty\n, a.QtyOut\n, a.OnRentQty\n, a.OffRentQty\n, a.CalledOffRentQty\n, a.PickUpOffRentQty\n, a.IROQty\n, a.IMOQty\n, a.ISOQty\n, IIF(a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty) IS NULL, a.ItemQty, a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty)) AS [AvailableQty]\n, a.ItemCntr\n, a.ItemPurp\n, a.HomeStore\n, a.CurrentStore\n, a.CurrentStoreName\n, a.ItemHeader\n, a.ItemReplaceCost\n, a.BulkItem\n, a.Inactive\n, a.BoughtUsed\n, a.HeaderKey\n, a.HeaderName\n, a.HeaderNum\n, a.HeaderReplaceCost\n, a.CategoryNumber\n, a.CategoryName\n, a.OEC\n, SUM(a.ItemQty * a.OEC) AS [TotalOEC]\n, SUM(a.OnRentQty * a.OEC) AS [TotalOnRentOEC]\n, SUM(a.OffRentQty * a.OEC) AS [TotalOffRentOEC]\n, SUM(a.CalledOffRentQty * a.OEC) AS [TotalOffRentOECCalledOff]\n, SUM(a.PickUpOffRentQty * a.OEC) AS [TotalOffRentOECPickUp]\n--Inspect = TotalNotAvailable - (TotalOffRentOEC + TotalInRepair)\n, (SUM(a.ItemQty * a.OEC) - (SUM(a.OnRentQty * a.OEC) + (SUM((IIF(a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty) IS NULL, a.ItemQty, a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty))) * a.OEC)))\n\t\t- ((SUM(a.OffRentQty * OEC)) + (SUM(a.IROQty * a.OEC)))) AS [TotalInspectOEC]\n--TotalNotAvailableOEC = TotalOEC - (TotalOnRentOEC + TotalAvailableOEC)\n, ((SUM(a.ItemQty * a.OEC)) - ((SUM(a.OnRentQty * a.OEC)) + (SUM((IIF(a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty) IS NULL, a.ItemQty, a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty))) * a.OEC)))) AS [TotalNotAvailableOEC]\n, SUM((IIF(a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty) IS NULL, a.ItemQty, a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty))) * a.OEC) AS [TotalAvailableOEC]\n, SUM(a.IROQty * a.OEC) AS [TotalInRepairOEC]\n, a.Snapshot_Date\nFROM (\nSELECT\n        ITF.[KEY] AS ItemKey\n\t  , ITF.[Num] AS ItemNum\n      , ITF.[Name] AS ItemName\n\t  , ITF.[Type] AS ItemType\n\t  , ITF.Asset      \n      , ITF.[Qty] AS ItemQty\n      , ITF.[QYOT] AS QtyOut\n\t  --Adjusted quantities in case of multiple out asset issue:\n\t  --OnRent\n\t  , CASE WHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.[OnRent]>0 THEN 1\n\t\tWHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.[OnRent]=0 THEN 0\n\t\tELSE ItemQty.[OnRent] END AS [OnRentQty]\n\t  --OffRent\n\t  , CASE WHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.[OnRent]>0 THEN 0\n\t\tWHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.[OffRent]>0 THEN 1\n\t\tELSE ItemQty.[OffRent] END AS [OffRentQty]\n\t  --CalledOff\n\t  , CASE WHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.[OnRent]>0 THEN 0\n\t\tWHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.OffRentCalledOffQty>0 THEN 1\n\t\tELSE ItemQty.OffRentCalledOffQty END AS [CalledOffRentQty]\n\t  --PickUp\n\t  , CASE WHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.[OnRent]>0 THEN 0\n\t\tWHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.OffRentPickUpQty>0 THEN 1\n\t\tELSE ItemQty.OffRentPickUpQty END AS [PickUpOffRentQty]\n\t  --IRO\n\t  , CASE WHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND ItemQty.[OnRent]=0 AND ItemQty.[OffRent]=0 THEN 1\n\t\tWHEN ITF.Asset=1 AND ITF.[QYOT]>1 AND (ItemQty.[OnRent]=1 OR ItemQty.[OffRent]=1) THEN 0\n\t\tELSE ItemQty.[IRO] END AS [IROQty]\n      , ItemQty.[IMO] AS [IMOQty]\n      , ItemQty.[ISO] AS [ISOQty]\n\t  , ItemQty.OffRentCalledOffQty\n\t  , ItemQty.OffRentPickUpQty\n      , ITF.[CNTR] AS ItemCntr\n      , ITF.[PURP] AS ItemPurp\n\t  , ITF.[HomeStore]\n      , ITF.[CurrentStore]\n\t  , PF.[STORE_NAME] AS CurrentStoreName      \n      , ITF.[Header] AS ItemHeader\n      , ITF.[ReplacementCost] AS ItemReplaceCost\n      , ITF.[BulkItem]\n      , ITF.[Inactive]\n\t  , ITF.BoughtUsed\n      , ITF_h.[KEY] AS HeaderKey\n      , ITF_h.[Name] AS HeaderName\n      , ITF_h.[Num] AS HeaderNum\n      , ITF_h.[ReplacementCost] AS HeaderReplaceCost\n      , ITF.[Category] AS CategoryNumber\n      , ITC.[Name] AS CategoryName\n      , ITF_OEC.OEC AS OEC\n      --, GETDATE() \n\t  ,switchoffset(sysdatetimeoffset(),'-05:00') AS [Snapshot_Date]\n\nFROM (((((POR.dbo.ItemFile ITF\n    LEFT JOIN POR.dbo.ItemFile AS ITF_h ON ITF.[Header] = ITF_h.[KEY])\n    LEFT JOIN POR.dbo.ParameterFile PF ON ITF.[CurrentStore] = PF.[Store])\n    LEFT JOIN POR.dbo.ItemCategory ITC ON ITF.[Category] = ITC.[Category])\n    LEFT JOIN POR.dbo.ItemDivision ITD ON ITC.[DivisionNumber] = ITD.[DivisionNumber])\n    LEFT JOIN (SELECT TI.[ITEM],\n\n                      SUM(IIF(LEFT(TI.[CNTR],1)<>'r' AND (NOT(TI.[TXTY] IN ('RR','RX','RH')) OR (TI.txty = 'RH' AND TI.DDT > GETDATE())) ,[TI].[Qty],0)) AS OnRent,\n                      SUM(IIF(LEFT(TI.[CNTR],1)<>'r' AND TI.[TXTY] = 'RH' AND TI.[DDT] <= GETDATE(),[TI].[Qty],0)) AS OffRent,\n\t\t\t\t\t  SUM(IIF(LEFT(TI.[CNTR],1)<>'r' AND TI.[TXTY] = 'RH' AND TI.[DDT] <= GETDATE() AND T.Pickup=0,[TI].[Qty],0)) AS OffRentCalledOffQty,\n\t\t\t\t\t  SUM(IIF(LEFT(TI.[CNTR],1)<>'r' AND TI.[TXTY] = 'RH' AND TI.[DDT] <= GETDATE() AND T.Pickup=1,[TI].[Qty],0)) AS OffRentPickUpQty,\n                      SUM(IIF(LEFT(TI.[CNTR],1)='r' AND NOT(TI.[TXTY] IN ('RR','RX')),[TI].[Qty],0)) AS IRO,\n                      SUM(IIF(LEFT(TI.[CNTR],1)='r' AND TI.[TXTY] IN ('RR','RX'),[TI].[Qty],0)) AS IMO,\n                      SUM(IIF(cf.[KEY] LIKE 'REPAIRS-SERV%' AND TI.SUBF = 1,TI.Qty,0)) AS ISO\n               FROM ((POR.dbo.TransactionItems TI\n                      INNER JOIN POR.dbo.Transactions T ON TI.[CNTR] = T.[CNTR])\n                      INNER JOIN POR.dbo.ItemFile ITF ON TI.[Item] = ITF.[Num])\n                      INNER JOIN POR.dbo.CustomerFile CF ON T.[CUSN] = CF.[CNUM]\n               WHERE LEFT(TI.[CNTR],1) <> 'c' AND\n                     LEFT(TI.[CNTR],1) <> 'f' AND\n                     LEFT(TI.[CNTR],1) <> 'l' AND\n                     LEFT(TI.[CNTR],1) <> 'q' AND\n                     LEFT(TI.[CNTR],1) <> 't' AND\n                     LEFT(TI.[CNTR],1) <> 'w' AND\n                     LEFT(TI.[TXTY],1) = 'R' AND\n                     LEFT(T.[STAT],1) = 'O' AND\n                     ITF.Qty < 99000\n               GROUP BY TI.[Item]\n                      ) AS ItemQty ON ITF.[Num] = ItemQty.[Item])\n\t\t\t\t\t  \n    LEFT JOIN (SELECT [ItemNumber] ,SUM(([QuantityPurchased] - [QuantitySold]) * ([PriceEach] + [ExtraCharges])) AS OEC\n               FROM POR.dbo.[ItemPurchaseDetail]\n               WHERE [Disposed] = 0\n               GROUP BY [ItemNumber]) AS ITF_OEC ON ITF.[NUM] = ITF_OEC.[ItemNumber]\nWHERE\n   ITF.[Type] <> 'b' AND\n   ITF.[Type] <> 'e' AND\n   ITF.[Type] <> 'f' AND\n   ITF.[Type] <> 'i' AND\n   ITF.[Type] <> 'k' AND\n   ITF.[Type] <> 'm' AND\n   ITF.[Type] <> 'n' AND\n   ITF.[Type] <> 'o' AND\n   ITF.[Type] <> 'p' AND\n   ITF.[Type] <> 's' AND\n   ITF.[Type] <> 'v' AND\n   ITF.[Type] <> 'w' AND\n   ITF.Qty < 90000\n   AND ITF.Inactive = 0 AND ITF.BulkItem = 0\n\t  ) a\nGROUP BY\n  a.ItemKey\n, a.ItemNum\n, a.ItemName\n, a.ItemType\n, a.Asset\n, a.ItemQty\n, a.QtyOut\n, a.OnRentQty\n, a.OffRentQty\n, a.CalledOffRentQty\n, a.PickUpOffRentQty\n, a.IROQty\n, a.IMOQty\n, a.ISOQty\n, IIF(a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty) IS NULL, a.ItemQty, a.ItemQty - (a.OnRentQty + a.OffRentQty + a.IROQty))\n, a.ItemCntr\n, a.ItemPurp\n, a.HomeStore\n, a.CurrentStore\n, a.CurrentStoreName\n, a.ItemHeader\n, a.ItemReplaceCost\n, a.BulkItem\n, a.Inactive\n, a.BoughtUsed\n, a.HeaderKey\n, a.HeaderName\n, a.HeaderNum\n, a.HeaderReplaceCost\n, a.CategoryNumber\n, a.CategoryName\n, a.OEC\n, a.Snapshot_Date;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "delete from [POR].[Executive_Dashboard_Stage_Summary] where snapshot_date = cast(switchoffset(sysdatetimeoffset(),'-05:00') as date);",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemNum",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemNum",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Asset",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "Asset",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "QtyOut",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "QtyOut",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OnRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OnRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "CalledOffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "CalledOffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "PickUpOffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "PickUpOffRentQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "IROQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "IROQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "IMOQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "IMOQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ISOQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ISOQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "AvailableQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "AvailableQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemCntr",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemCntr",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemPurp",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "ItemPurp",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "HomeStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "HomeStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CurrentStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CurrentStore",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CurrentStoreName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CurrentStoreName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemHeader",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ItemHeader",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemReplaceCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "ItemReplaceCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "BulkItem",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "BulkItem",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "Inactive",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "Inactive",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "BoughtUsed",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "BoughtUsed",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "HeaderKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "HeaderKey",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "HeaderName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "HeaderName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "HeaderNum",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "HeaderNum",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "HeaderReplaceCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "HeaderReplaceCost",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "CategoryNumber",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CategoryNumber",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalOEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalOnRentOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalOnRentOEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalOffRentOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalOffRentOEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalOffRentOECCalledOff",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalOffRentOECCalledOff",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalOffRentOECPickUp",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalOffRentOECPickUp",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalInspectOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalInspectOEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalNotAvailableOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalNotAvailableOEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalAvailableOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalAvailableOEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "TotalInRepairOEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "TotalInRepairOEC",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "Snapshot_Date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "Snapshot_Date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Stage_Summary"
+						}
+					}
+				]
+			},
+			{
+				"name": "EXECUTIVE_DASHBOARD_STAGE_TRANSACTIONDETAILS",
+				"description": "clean transaction details",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "EXECUTIVE_DASHBOARD_STAGE_SUMMARY",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT t.CNTR, t.STAT AS CNTRStatus, FORMAT(t.[DATE],N'yyyy-MM-dd HH:mm') AS CNTRStartDate, FORMAT(t1.OriginalContractDate,N'yyyy-MM-dd HH:mm') AS OriginalCNTRStartDate--, FORMAT(t.CLDT,N'yyyy-MM-dd HH:mm') AS CNTRClosedDate_delete\n, CASE WHEN t.CONT = '' THEN FORMAT(t.CLDT,N'yyyy-MM-dd HH:mm') WHEN t.CLDT IS NULL THEN NULL ELSE FORMAT(ti.DDT,N'yyyy-MM-dd HH:mm') END AS CNTRClosedDate\n, FORMAT(t.DeliveryDate,N'yyyy-MM-dd HH:mm') AS DeliveryDate_sys, FORMAT(t.PickupDate,N'yyyy-MM-dd HH:mm') AS ScheduledPickupDate_sys, FORMAT(ti.DDT,N'yyyy-MM-dd HH:mm') AS [EstItemDueDate_sysDDT] \n, FORMAT(t.Billed,N'yyyy-MM-dd HH:mm') AS InvoiceDate_sys\n\n, IIF(ISDATE(CASE WHEN ti.Comments LIKE '%Called Off #%on%' THEN SUBSTRING(LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('on ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))),0,CHARINDEX(' ',LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('on ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))))) ELSE NULL END)=1,CASE WHEN ti.Comments LIKE '%Called Off #%on%' THEN SUBSTRING(LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('on ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))),0,CHARINDEX(' ',LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('on ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))))) ELSE NULL END,NULL) AS CalledOffOnDate\n, IIF(ISDATE(CASE WHEN ti.Comments LIKE '%Called Off #%for%' THEN \nRTRIM(SUBSTRING(LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('for ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))),0,PATINDEX('%/[0-9][0-9][0-9][0-9]%',LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('for ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))))+5))\nELSE NULL END)=1,CASE WHEN ti.Comments LIKE '%Called Off #%for%' THEN \nRTRIM(SUBSTRING(LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('for ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))),0,PATINDEX('%/[0-9][0-9][0-9][0-9]%',LTRIM(SUBSTRING(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy')))), CHARINDEX('for ',RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))) + 3, LEN(RIGHT(REPLACE(ti.Comments,'PO#','yyy'),CHARINDEX('#',REVERSE(REPLACE(ti.Comments,'PO#','yyy'))))))))+5))\nELSE NULL END,NULL) AS CalledOffForDate\n\n, IIF(ti.TXTY = 'RH' AND ti.[DDT] <= GETDATE() AND t.Pickup = 0, 1, 0) AS IsInCalledOffStatus\n, IIF(ti.TXTY = 'RH' AND TI.[DDT] <= GETDATE() AND t.Pickup = 1, 1, 0) AS IsInPickupStatus\n\n, IIF(t.CONT = '', 0,1) AS IsCycleBill\n, IIF(LEFT(t.STAT,1)='O',1,0) IsOpenStatusCNTR\n, IIF(LEFT(t.STAT,1)='C' OR (LEFT(t.STAT,1)<>'O' AND t.CLDT IS NOT NULL),1,0) AS IsClosedCNTR\n, IIF(LEFT(ti.TXTY,1)='R',1,0) AS IsRentalItems\n, IIF(ISNUMERIC(LEFT(t.CNTR,1))=1,1,0) AS IsNonPrefixedCNTR\n, IIF(ti.ITEM IS NULL,1,0) AS IsItemlessCNTR\n\n, t.[STR] AS Branch, pf.STORE_NAME AS StoreName\n, ti.Comments\n, ti.TXTY, ifi.[TYPE]\n, ic.Category AS CategoryNumber\n, ic.[Name] AS Category\n, ifi.Header\n, ifi.[KEY]\n, ifi.NUM\n, ifi.[Name]\n, ti.[Desc]\n, ifi.SerialNumber AS SerialNumber\n, ifi.MANF AS Make\n, ifi.MODN AS Model\n, ifi.Modelyear AS ModelYear\n, ifi.QTY AS ItemQty\n, ti.QTY AS CNTRQty\n, ti.PRIC AS AmountCharged\n, ti.DiscountAmount\n, t.DMG AS ExtendedProtectionPlan\n, ti.DailyAmount\n, ifi.RATE1 AS BookRateDaily\n, ti.WeeklyAmount\n, ifi.RATE2 AS BookRateWeekly\n, ti.MonthlyAmount\n, ifi.RATE3 AS BookRateMonthly\n, ifi.PURP AS [SP_PURP]\n, ifi.ExtraCharges AS SP_ExtraCharges\n, oec.OEC\n, oec.[BriggsPURP_PlusExtraCharges]\n, ifi.BulkItem AS IsBulkItem\n, ifi.Inactive AS IsInactive\n, ifi.Asset AS IsAsset\n, IIF((ifi.[TYPE] NOT IN ('b','e','f','i','k','m','n','o','p','s','v','w') AND (ifi.Inactive=0 AND ifi.BulkItem=0 AND ifi.QTY<90000)),1,0) AS IsMatchSummaryTableItems --Match Executive_Dashboard_Stage_Summary items\n, CASE WHEN ti.Substatus = 7 THEN 1 ELSE 0 END AS IsSubstitute\n, t.Delvr AS IsDeliveryRequired\n, cf.APILink AS NSCustomerNumber\n, cf.[CNUM] AS CustomerNumber\n, cf.[Name] AS CustomerName\n, CASE WHEN t.PYMT = 'E' THEN 'Account' ELSE 'Cash' END AS CustomerType\n, pm.PayType\n, t.JOBN\n, t.JBPO\n, t.JBID\n, cjs.[Description] AS JobSiteName\n, t.DeliverToCompany\n, COALESCE(NULLIF(cjs.SiteAddress,''), NULLIF(t.DeliveryAddress,''), NULLIF(pf.STORE_STRT,'')) AS DeliveryStreetAddress\n, COALESCE(NULLIF(LEFT(cjs.SiteCity, CHARINDEX(',',cjs.SiteCity + ',', 1) -1),''),NULLIF(LEFT(t.DeliveryCity, CHARINDEX(',',t.DeliveryCity + ',', 1) -1),''), NULLIF(LEFT(pf.STORE_CITY, CHARINDEX(',',pf.STORE_CITY + ',', 1) -1),'')) AS DeliveryCity\n, COALESCE(LEFT(TRIM(NULLIF(RIGHT(cjs.SiteCity, NULLIF(CHARINDEX(',',REVERSE(cjs.SiteCity)),'') -1),'')),2),LEFT(TRIM(NULLIF(RIGHT(t.DeliveryCity, NULLIF(CHARINDEX(',',REVERSE(t.DeliveryCity)),'') -1),'')),2) , LEFT(TRIM(NULLIF(RIGHT(pf.STORE_CITY, NULLIF(CHARINDEX(',',REVERSE(pf.STORE_CITY)),'') -1),'')),2)) AS DeliveryState\n, COALESCE(NULLIF(cjs.SiteZip,''), NULLIF(t.DeliveryZip,''), NULLIF(pf.STORE_ZIP,'')) AS DeliveryPostalCode\n, t.ContactPhone\n, s.[Name] AS ContractSalesRep\n, s2.[Name] AS CustomerSalesRep\n, o.OPNM AS CreatedOperatorName\n, o2.OPNM AS AssignedOperatorName\n, CAST(GETDATE() AS DATE) AS LastLoadDate\nFROM POR.dbo.Transactions t\nJOIN (SELECT t0.CNTR, t0.[DATE] AS OriginalContractDate FROM POR.dbo.Transactions t0 WHERE RIGHT(t0.CNTR,1) NOT LIKE '[A-Za-z]%') t1\nON t1.CNTR = CASE WHEN RIGHT(t.CNTR,1) LIKE '[A-Za-z]%' THEN LEFT(t.CNTR, LEN(t.CNTR)-1) ELSE t.CNTR END\nLEFT JOIN POR.dbo.TransactionItems ti ON ti.CNTR = t.CNTR\nLEFT JOIN POR.dbo.ItemFile ifi ON ifi.NUM = ti.ITEM\nLEFT JOIN POR.dbo.ItemCategory ic ON ic.Category = ifi.Category\nLEFT JOIN POR.dbo.CustomerJobSite cjs ON cjs.Number = t.JobSite\nLEFT JOIN POR.dbo.ParameterFile pf ON pf.Store = t.[STR]\nLEFT JOIN POR.dbo.PaymentMethod pm ON pm.PayMeth = t.PYMT\nLEFT JOIN (SELECT ipd.ItemNumber ,sum((ipd.QuantityPurchased - ipd.QuantitySold) * (ipd.PriceEach + ipd.ExtraCharges)) AS OEC, SUM(ipd.PriceEach + ipd.ExtraCharges) AS [BriggsPURP_PlusExtraCharges]\n\t\t\tFROM POR.dbo.ItemPurchaseDetail ipd\n\t\t\tWHERE ipd.Disposed = 0\n\t\t\tGROUP BY ipd.ItemNumber) AS oec ON ifi.[NUM] = oec.ItemNumber\nLEFT JOIN POR.dbo.CustomerFile cf ON cf.CNUM = t.CUSN\nLEFT JOIN POR.dbo.Salesman s ON s.Number = t.Salesman\nLEFT JOIN POR.dbo.Salesman s2 ON s2.Number = cf.Salesman -- Example CNTR 103071 See GUI. Trans SM is Misha Tufkova, but Customer assigned SM is Daniel Lee\nLEFT JOIN POR.dbo.OperatorId o ON o.OPNO = t.OperatorCreated\nLEFT JOIN POR.dbo.OperatorId o2 ON o2.OPNO = t.OperatorAssigned;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table [POR].[Executive_Dashboard_Stage_TransactionDetails];",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"enableSkipIncompatibleRow": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "CNTR",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CNTR",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CNTRStatus",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CNTRStatus",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CNTRStartDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CNTRStartDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "OriginalCNTRStartDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "OriginalCNTRStartDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CNTRClosedDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CNTRClosedDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DeliveryDate_sys",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DeliveryDate_sys",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ScheduledPickupDate_sys",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ScheduledPickupDate_sys",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "EstItemDueDate_sysDDT",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "EstItemDueDate_sysDDT",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "InvoiceDate_sys",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "InvoiceDate_sys",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CalledOffOnDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CalledOffOnDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CalledOffForDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CalledOffForDate",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "IsInCalledOffStatus",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsInCalledOffStatus",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsInPickupStatus",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsInPickupStatus",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsCycleBill",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsCycleBill",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsOpenStatusCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsOpenStatusCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsClosedCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsClosedCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsRentalItems",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsRentalItems",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsNonPrefixedCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsNonPrefixedCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsItemlessCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsItemlessCNTR",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Branch",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Branch",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "StoreName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "StoreName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Comments",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Comments",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TXTY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "TYPE",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TYPE",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CategoryNumber",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CategoryNumber",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Category",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Category",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Header",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "KEY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "KEY",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "NUM",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "NUM",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "NAME",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Desc",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DESC",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "SerialNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "SerialNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Make",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Model",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ModelYear",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ItemQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "CNTRQty",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "CNTRQty",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "AmountCharged",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "AmountCharged",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "DiscountAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "DiscountAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "ExtendedProtectionPlan",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "ExtendedProtectionPlan",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "DailyAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "DailyAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "BookRateDaily",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "BookRateDaily",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "WeeklyAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "WeeklyAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "BookRateWeekly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "BookRateWeekly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "MonthlyAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "MonthlyAmount",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "BookRateMonthly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "BookRateMonthly",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "SP_PURP",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "SP_PURP",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "SP_ExtraCharges",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "SP_ExtraCharges",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "BriggsPURP_PlusExtraCharges",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								},
+								"sink": {
+									"name": "BriggsPURP_PlusExtraCharges",
+									"type": "Decimal",
+									"physicalType": "money",
+									"scale": 4,
+									"precision": 19
+								}
+							},
+							{
+								"source": {
+									"name": "IsBulkItem",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "IsBulkItem",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "IsInactive",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "IsInactive",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "IsAsset",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "IsAsset",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "IsMatchSummaryTableItems",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsMatchSummaryTableItems",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsSubstitute",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "IsSubstitute",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "IsDeliveryRequired",
+									"type": "Boolean",
+									"physicalType": "bit"
+								},
+								"sink": {
+									"name": "IsDeliveryRequired",
+									"type": "Boolean",
+									"physicalType": "bit"
+								}
+							},
+							{
+								"source": {
+									"name": "NSCustomerNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "NSCustomerNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CustomerNumber",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CustomerName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CustomerType",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "PayType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "PayType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "JOBN",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "JOBN",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "JBPO",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "JBPO",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "JBID",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "JBID",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "JobSiteName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "JobSiteName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DeliverToCompany",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DeliverToCompany",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DeliveryStreetAddress",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DeliveryStreetAddress",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DeliveryCity",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DeliveryCity",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DeliveryState",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DeliveryState",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DeliveryPostalCode",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DeliveryPostalCode",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ContactPhone",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ContactPhone",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ContractSalesRep",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ContractSalesRep",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerSalesRep",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CustomerSalesRep",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CreatedOperatorName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "CreatedOperatorName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "AssignedOperatorName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "AssignedOperatorName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "LastLoadDate",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "LastLoadDate",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "POR_Dataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Executive_Dashboard_Stage_TransactionDetails"
+						}
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "To be Deleted"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-06-22T14:42:25Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

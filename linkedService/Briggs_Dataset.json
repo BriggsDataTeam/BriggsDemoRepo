@@ -1,0 +1,16 @@
+{
+	"name": "Briggs_Dataset",
+	"type": "Microsoft.Synapse/workspaces/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"connectionString": "integrated security=False;data source=10.10.2.48;initial catalog=Briggs_MST;user id=local",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiIzZThlNTUxNS0yOTkyLTRhNDEtYmRmOS1iNjM3NzVkNmUzMDkiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "STAGE-POR-IntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

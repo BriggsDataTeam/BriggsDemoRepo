@@ -1,0 +1,388 @@
+{
+	"name": "PL_Ceridian_Import_old",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetBearerToken",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://dfid.dayforcehcm.com/connect/token",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=password&companyId=siteprorentals&username=SiteProReportingUser&password=hG!m42AD&client_id=Dayforce.HCMAnywhere.Client"
+				}
+			},
+			{
+				"name": "Copy data",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "GetBearerToken",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"additionalHeaders": {
+							"Authorization": {
+								"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+								"type": "Expression"
+							}
+						},
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table POR.Ceridian_EmployeeInformation_staging_old;",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "['Employee_LastName']"
+								},
+								"sink": {
+									"name": "Employee_LastName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Employee_MiddleName']"
+								},
+								"sink": {
+									"name": "Employee_MiddleName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Employee_FirstName']"
+								},
+								"sink": {
+									"name": "Employee_First",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['EmployeeEmploymentStatus_EmployeeNumber']"
+								},
+								"sink": {
+									"name": "EmployeeEmploymentStatus_EmployeeNumber",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Employee_HireDate']"
+								},
+								"sink": {
+									"name": "Employee_HireDate",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Employee_TerminationDate']"
+								},
+								"sink": {
+									"name": "Employee_TerminationDate",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Job_ShortName']"
+								},
+								"sink": {
+									"name": "Job_ShortName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['DeptJob_ShortName']"
+								},
+								"sink": {
+									"name": "DeptJob_ShortName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['OrgUnit_ShortName']"
+								},
+								"sink": {
+									"name": "OrgUnit_ShortName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Department_ShortName']"
+								},
+								"sink": {
+									"name": "Department_ShortName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['EmployeeManager_ManagerDisplayName']"
+								},
+								"sink": {
+									"name": "EmployeeManager_ManagerDisplayName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['EmploymentStatus_ShortName']"
+								},
+								"sink": {
+									"name": "EmploymentStatus_ShortName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['PayType_ShortName']"
+								},
+								"sink": {
+									"name": "PayType_ShortName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['PayClass_ShortName']"
+								},
+								"sink": {
+									"name": "PayClass_ShortName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Employee_SocialSecurityNumber']"
+								},
+								"sink": {
+									"name": "Employee_SocialSecurityNumber",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['Employee_Gender']"
+								},
+								"sink": {
+									"name": "Employee_Gender",
+									"type": "String"
+								}
+							}
+						],
+						"collectionReference": "$['Data']['Rows']"
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "GetCeridianToken",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "Ceridian_EmployeeInformation_staging_old"
+						}
+					}
+				]
+			},
+			{
+				"name": "Copy raw data to JSON",
+				"description": "stores just one day, in case of data dispute.",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "GetBearerToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"additionalHeaders": {
+							"Authorization": {
+								"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+								"type": "Expression"
+							}
+						},
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "GetCeridianToken",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_ADLS_JSON_1",
+						"type": "DatasetReference",
+						"parameters": {
+							"ContainerName": "main",
+							"Path": "Data/Sammons Industrial/SiteProRentals/POR/Ceridian/APIDataLakeReport",
+							"FileName": "APIDataLakeReport"
+						}
+					}
+				]
+			},
+			{
+				"name": "TransformToSink",
+				"description": "sink to mdw",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "Copy raw data to JSON",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "TransformToSink",
+						"type": "DataFlowReference",
+						"datasetParameters": {
+							"GetData": {
+								"ContainerName": "main",
+								"Path": "Data/Sammons Industrial/SiteProRentals/POR/Ceridian/APIDataLakeReport",
+								"FileName": "APIDataLakeReport"
+							}
+						}
+					},
+					"staging": {
+						"linkedService": {
+							"referenceName": "AzureBlobStorage_Parquet",
+							"type": "LinkedServiceReference"
+						},
+						"folderPath": "main/Data/Sammons Industrial/SiteProRentals/POR/Ceridian/APIDataLakeReport_Der"
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "Execute EmailSendFailure",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "TransformToSink",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "EmailSendFailure",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"EmailTo": "annie.gutreuter@sammonsindustrial.com",
+						"ActivityType": "TransformToSink",
+						"ErrorMessage": {
+							"value": "@activity('TransformToSink').Error.Message",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"folder": {
+			"name": "annie"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-08-19T19:13:47Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

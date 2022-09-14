@@ -1,0 +1,20 @@
+{
+	"name": "RouseSFTP",
+	"type": "Microsoft.Synapse/workspaces/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "Sftp",
+		"typeProperties": {
+			"host": "ftp.rouseservices.com",
+			"port": 22,
+			"skipHostKeyValidation": true,
+			"authenticationType": "Basic",
+			"userName": "Sitepro",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiI0NmEyMjZjNC00ZmY4LTQ1NmUtYjNhYy1hYzkzY2ZlOWI5ZGMiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "STAGE-POR-IntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

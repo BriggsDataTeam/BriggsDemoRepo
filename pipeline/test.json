@@ -1,0 +1,200 @@
+{
+	"name": "test",
+	"properties": {
+		"activities": [
+			{
+				"name": "Load_From_Prod_To_Stage",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT * FROM [POR].[executive_dashboard_fleet_Summary]",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate table [POR].[executive_dashboard_fleet_Summary]",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "Branch",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "branch",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "sort_order",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "sort_order",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "Fleets",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fleets",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "Total",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "total",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "OEC",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "oec",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "diff",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "diff",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "%off",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "%off",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "-1%",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "-1%",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "-1d$",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "-1d$",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "snapshot_date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "snapshot_date",
+									"type": "DateTime",
+									"physicalType": "date"
+								}
+							},
+							{
+								"source": {
+									"name": "day",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "day",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "AzureProdDatabase",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "POR",
+							"table_name": "executive_dashboard_fleet_Summary"
+						}
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "MDP POR DataLoad_New"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-08-03T09:27:42Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}
