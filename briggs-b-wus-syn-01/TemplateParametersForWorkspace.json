@@ -1,0 +1,66 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"value": "briggs-b-wus-syn-01"
+		},
+		"AzureBlobStorage1_connectionString": {
+			"value": ""
+		},
+		"AzureBlobStorage2_connectionString": {
+			"value": ""
+		},
+		"AzureBlobStorage_Parquet_connectionString": {
+			"value": ""
+		},
+		"AzureProdDatabase_connectionString": {
+			"value": ""
+		},
+		"AzureSqlDatabase1_connectionString": {
+			"value": ""
+		},
+		"Briggs_Dataset_connectionString": {
+			"value": ""
+		},
+		"LS_POR99_connectionString": {
+			"value": ""
+		},
+		"Netsuite_connectionString": {
+			"value": ""
+		},
+		"Netsuite_password": {
+			"value": ""
+		},
+		"POR_Dataset_connectionString": {
+			"value": ""
+		},
+		"RouseSFTP_password": {
+			"value": ""
+		},
+		"atest_accountKey": {
+			"value": ""
+		},
+		"briggs-b-wus-syn-01-WorkspaceDefaultSqlServer_connectionString": {
+			"value": ""
+		},
+		"Netsuite_properties_typeProperties_userName": {
+			"value": "Team-SammonsDataTeam@sammonsindustrial.com"
+		},
+		"RestService_Ceridian_properties_typeProperties_url": {
+			"value": "https://us62e2-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/"
+		},
+		"RouseSFTP_properties_typeProperties_host": {
+			"value": "ftp.rouseservices.com"
+		},
+		"RouseSFTP_properties_typeProperties_userName": {
+			"value": "Sitepro"
+		},
+		"atest_properties_typeProperties_url": {
+			"value": "https://briggsazureblob.dfs.core.windows.net/"
+		},
+		"briggs-b-wus-syn-01-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"value": "https://briggsbetawusdls01.dfs.core.windows.net"
+		}
+	}
+}
