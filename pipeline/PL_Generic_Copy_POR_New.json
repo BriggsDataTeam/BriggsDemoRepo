@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "Select Distinct ID,sourceDB,SourcetableName From dbo.control_table_por Where ProcessName = 'AzSQL_ADLS'  and sourcedb in ('POR','master') \nand EnableAction = 1  and table_added='Old' order by ID",
+						"sqlReaderQuery": "Select Distinct ID,sourceDB,SourcetableName \nFROM dbo.control_table_por Where ProcessName = 'AzSQL_ADLS'  \nAND sourcedb in ('POR','master','POR99') \nand EnableAction = 1  and table_added='Old' order by ID",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
