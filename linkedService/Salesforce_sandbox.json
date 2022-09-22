@@ -1,0 +1,18 @@
+{
+	"name": "Salesforce_sandbox",
+	"type": "Microsoft.Synapse/workspaces/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "Salesforce",
+		"typeProperties": {
+			"environmentUrl": "https://siteprorentals--sb1.sandbox.my.salesforce.com",
+			"username": "annie.gutreuter@sammonsindustrial.com.sb1",
+			"apiVersion": "56.0",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIlNZTkFQU0VAM0Q2MjM2OUItM0Y1RC00RUE0LThBNUEtQzJEQzU5OTg2NzU2XzFhNGRkMzc1LWM0ZjctNGIyMi04ZGRhLWJiNmQzNTg3YjlmMSINCn0="
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}
