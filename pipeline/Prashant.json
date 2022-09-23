@@ -65,22 +65,6 @@
 				}
 			},
 			{
-				"name": "Wait4",
-				"type": "Wait",
-				"dependsOn": [
-					{
-						"activity": "Wait3",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"waitTimeInSeconds": 2
-				}
-			},
-			{
 				"name": "Wait5",
 				"type": "Wait",
 				"dependsOn": [
