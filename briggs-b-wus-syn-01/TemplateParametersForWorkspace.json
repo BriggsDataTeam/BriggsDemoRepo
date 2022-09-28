@@ -38,6 +38,12 @@
 		"RouseSFTP_password": {
 			"value": ""
 		},
+		"Salesforce_sandbox_password": {
+			"value": ""
+		},
+		"Salesforce_sandbox_securityToken": {
+			"value": ""
+		},
 		"atest_accountKey": {
 			"value": ""
 		},
@@ -55,6 +61,12 @@
 		},
 		"RouseSFTP_properties_typeProperties_userName": {
 			"value": "Sitepro"
+		},
+		"Salesforce_sandbox_properties_typeProperties_environmentUrl": {
+			"value": "https://test.salesforce.com"
+		},
+		"Salesforce_sandbox_properties_typeProperties_username": {
+			"value": "team-sammonsdatateam@sammonsindustrial.com"
 		},
 		"atest_properties_typeProperties_url": {
 			"value": "https://briggsazureblob.dfs.core.windows.net/"
