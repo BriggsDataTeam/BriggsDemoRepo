@@ -1,0 +1,15 @@
+{
+	"name": "SalesforceObject",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Salesforce_sandbox",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "SalesforceObject",
+		"schema": [],
+		"typeProperties": {
+			"objectApiName": "Account"
+		}
+	}
+}
