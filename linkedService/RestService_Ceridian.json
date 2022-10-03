@@ -1,12 +1,11 @@
 {
 	"name": "RestService_Ceridian",
-	"type": "Microsoft.Synapse/workspaces/linkedservices",
 	"properties": {
 		"description": "Ceridian Dayforce REST API connection",
 		"annotations": [],
 		"type": "RestService",
 		"typeProperties": {
-			"url": "https://us62e2-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/",
+			"url": "https://us63-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/",
 			"enableServerCertificateValidation": false,
 			"authenticationType": "Anonymous"
 		},
@@ -14,5 +13,6 @@
 			"referenceName": "AutoResolveIntegrationRuntime",
 			"type": "IntegrationRuntimeReference"
 		}
-	}
+	},
+	"type": "Microsoft.Synapse/workspaces/linkedservices"
 }
