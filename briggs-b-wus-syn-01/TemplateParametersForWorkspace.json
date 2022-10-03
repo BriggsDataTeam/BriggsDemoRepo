@@ -54,7 +54,7 @@
 			"value": "Team-SammonsDataTeam@sammonsindustrial.com"
 		},
 		"RestService_Ceridian_properties_typeProperties_url": {
-			"value": "https://us62e2-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/"
+			"value": "https://us63-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/"
 		},
 		"RouseSFTP_properties_typeProperties_host": {
 			"value": "ftp.rouseservices.com"

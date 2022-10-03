@@ -73,7 +73,7 @@
 		},
 		"RestService_Ceridian_properties_typeProperties_url": {
 			"type": "string",
-			"defaultValue": "https://us62e2-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/"
+			"defaultValue": "https://us63-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/"
 		},
 		"RouseSFTP_properties_typeProperties_host": {
 			"type": "string",
