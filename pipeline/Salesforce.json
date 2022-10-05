@@ -68,6 +68,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SalesforceSource",
+						"query": "SELECT Netsuite_Customer_Number__c, AR_Balance__c\nFROM Account",
 						"readBehavior": "query"
 					},
 					"sink": {
