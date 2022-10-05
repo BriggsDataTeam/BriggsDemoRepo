@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT\n  e.entityid\n, CAST(SUM(ISNULL(tal.AmountUnpaid,0) - ISNULL(tal.PaymentAmountUnused,0)) AS DECIMAL(18,2)) AS OpenBalance\nFROM Netsuite.[Transaction] t\nJOIN Netsuite.TransactionLine tl ON t.id = tl.[transaction]\nJOIN Netsuite.TransactionAccountingLine tal ON tal.[transaction] = t.id\nJOIN Netsuite.Entity e ON e.id = t.entity\nWHERE t.posting = 'T'\nAND t.voided = 'F'\nAND tl.mainline = 'T'\nAND (tal.AmountUnpaid <> 0 OR tal.PaymentAmountUnused <> 0)\nAND t.abbrevtype IN ('CREDMEM','PMT','SALEINV')\nAND ISNULL(DATEDIFF(d,CAST(t.duedate AS DATE),GETDATE()),DATEDIFF(d,CAST(t.trandate AS DATE),GETDATE())) >= 1\nGROUP BY e.entityid",
+						"sqlReaderQuery": "SELECT\n  e.entityid\n, CAST(SUM(ISNULL(tal.AmountUnpaid,0) - ISNULL(tal.PaymentAmountUnused,0)) AS DECIMAL(18,2)) AS OpenBalance\nFROM Netsuite.[Transaction] t\nJOIN Netsuite.TransactionLine tl ON t.id = tl.[transaction]\nJOIN Netsuite.TransactionAccountingLine tal ON tal.[transaction] = t.id\nJOIN Netsuite.Entity e ON e.id = t.entity\nWHERE t.posting = 'T'\nAND t.voided = 'F'\nAND tl.mainline = 'T'\nAND (tal.AmountUnpaid <> 0 OR tal.PaymentAmountUnused <> 0)\nAND t.abbrevtype IN ('CREDMEM','PMT','SALEINV')\nAND ISNULL(DATEDIFF(d,CAST(t.duedate AS DATE),GETDATE()),DATEDIFF(d,CAST(t.trandate AS DATE),GETDATE())) >= 1\nGROUP BY e.entityid\nORDER BY e.entityid",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -68,7 +68,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SalesforceSource",
-						"query": "SELECT Netsuite_Customer_Number__c, AR_Balance__c\nFROM Account",
+						"query": "SELECT Netsuite_Customer_Number__c, AR_Balance__c\nFROM Account\nWHERE LEFT(Netsuite_Customer_Number__c, 1) = 'C'\nORDER BY Netsuite_Customer_Number__c",
 						"readBehavior": "query"
 					},
 					"sink": {
