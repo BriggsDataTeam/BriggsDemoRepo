@@ -13528,7 +13528,9 @@
 							"sink": {
 								"type": "SalesforceSink",
 								"writeBatchSize": 5000,
-								"writeBehavior": "insert"
+								"writeBehavior": "upsert",
+								"externalIdFieldName": "Netsuite_Customer_Number__c",
+								"ignoreNullValues": false
 							},
 							"enableStaging": false,
 							"translator": {
