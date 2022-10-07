@@ -13529,7 +13529,7 @@
 								"type": "SalesforceSink",
 								"writeBatchSize": 5000,
 								"writeBehavior": "upsert",
-								"externalIdFieldName": "Netsuite_Customer_Number__c",
+								"externalIdFieldName": "NetSuite_Customer_Number__c",
 								"ignoreNullValues": false
 							},
 							"enableStaging": false,
@@ -13563,7 +13563,7 @@
 								],
 								"typeConversion": true,
 								"typeConversionSettings": {
-									"allowDataTruncation": true,
+									"allowDataTruncation": false,
 									"treatBooleanAsNumber": false
 								}
 							}
@@ -13601,7 +13601,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "SalesforceSource",
-								"query": "SELECT Netsuite_Customer_Number__c, AR_Balance__c\nFROM Account\nWHERE LEFT(Netsuite_Customer_Number__c, 1) = 'C'\nORDER BY Netsuite_Customer_Number__c",
+								"query": "SELECT *\nFROM Account\nWHERE LEFT(Netsuite_Customer_Number__c, 1) = 'C'\nORDER BY Netsuite_Customer_Number__c",
 								"readBehavior": "query"
 							},
 							"sink": {
