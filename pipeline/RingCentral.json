@@ -1,0 +1,36 @@
+{
+	"name": "RingCentral",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetBearerToken",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://platform.devtest.ringcentral.com",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "clientId=Jh8pq0E2Qu-CEa0-2r-x9w&clientSecret=-IOsIbL4RyWqAw7F4uc2TgfGLC48RGQQ6PgKTm6LRTgA&username=+19294592133&password=2kH\\Cd%?upAfrL$&extension=101"
+				}
+			}
+		],
+		"folder": {
+			"name": "annie"
+		},
+		"annotations": []
+	}
+}

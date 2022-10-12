@@ -1,0 +1,36 @@
+{
+	"name": "MetTel",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetBearerToken",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": "https://id.bruin.com",
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "POST",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=1QuQH0gebBW96Gjxs2uUn0HqKmV6LGSE&client_secret=1RNGDOBTwECQVUbgcSts52B6IcDlm6PmZkWybfqZdBGXVaRLRR7e9p1A62myJzRm&grant_type=client_credentials&scope=public_api"
+				}
+			}
+		],
+		"folder": {
+			"name": "annie"
+		},
+		"annotations": []
+	}
+}
