@@ -15327,7 +15327,7 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"url": "https://id.bruin.com",
+							"url": "https://id.bruin.com/identity/connect/token",
 							"connectVia": {
 								"referenceName": "AutoResolveIntegrationRuntime",
 								"type": "IntegrationRuntimeReference"
