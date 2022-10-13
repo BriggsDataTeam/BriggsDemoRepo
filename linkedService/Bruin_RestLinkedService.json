@@ -5,7 +5,7 @@
 		"annotations": [],
 		"type": "RestService",
 		"typeProperties": {
-			"url": "https://api.bruin.com/api/",
+			"url": "https://api.bruin.com/",
 			"enableServerCertificateValidation": true,
 			"authenticationType": "Anonymous"
 		},
