@@ -1,0 +1,17 @@
+{
+	"name": "Bruin_RestLinkedService",
+	"properties": {
+		"description": "Bruin REST API connection\n* note: swagger exists:  https://api.bruin.com/index.html#/User/get_api_User",
+		"annotations": [],
+		"type": "RestService",
+		"typeProperties": {
+			"url": "https://api.bruin.com/api/",
+			"enableServerCertificateValidation": true,
+			"authenticationType": "Anonymous"
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}
