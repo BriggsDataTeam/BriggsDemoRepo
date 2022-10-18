@@ -1,5 +1,5 @@
 {
-	"name": "Salesforce",
+	"name": "testing",
 	"properties": {
 		"activities": [
 			{
@@ -201,8 +201,144 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "ToSalesforce",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT\n  e.entityid\n, CAST(SUM(ISNULL(tal.AmountUnpaid,0) - ISNULL(tal.PaymentAmountUnused,0)) AS DECIMAL(18,2)) AS OpenBalance\nFROM Netsuite.[Transaction] t\nJOIN Netsuite.TransactionLine tl ON t.id = tl.[transaction]\nJOIN Netsuite.TransactionAccountingLine tal ON tal.[transaction] = t.id\nJOIN Netsuite.Entity e ON e.id = t.entity\nWHERE t.posting = 'T'\nAND t.voided = 'F'\nAND tl.mainline = 'T'\nAND (tal.AmountUnpaid <> 0 OR tal.PaymentAmountUnused <> 0)\nAND t.abbrevtype IN ('CREDMEM','PMT','SALEINV')\nAND LEFT(e.entityid,1) = 'C'\nAND ISNULL(DATEDIFF(d,CAST(t.duedate AS DATE),GETDATE()),DATEDIFF(d,CAST(t.trandate AS DATE),GETDATE())) >= 1\nAND e.entityid = 'C103192'\nGROUP BY e.entityid\nORDER BY e.entityid",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "SalesforceSink",
+						"writeBatchSize": 5000,
+						"writeBehavior": "upsert",
+						"externalIdFieldName": "NetSuite_Customer_Number__c",
+						"ignoreNullValues": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "entityid",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "NetSuite_Customer_Number__c",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "OpenBalance",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 18
+								},
+								"sink": {
+									"name": "AR_Balance__c",
+									"type": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": false,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SalesforceObject",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "FromSalesforce_preview data",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "ToSalesforce",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SalesforceSource",
+						"query": "SELECT *\nFROM Account\nWHERE LEFT(Netsuite_Customer_Number__c, 1) = 'C'\nORDER BY Netsuite_Customer_Number__c",
+						"readBehavior": "query"
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SalesforceObject",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_ADLS_JSON_1",
+						"type": "DatasetReference",
+						"parameters": {
+							"ContainerName": "main",
+							"Path": "Data/Sammons Industrial/SiteProRentals/Salesforce/Account",
+							"FileName": "Account"
+						}
+					}
+				]
 			}
 		],
+		"folder": {
+			"name": "annie"
+		},
 		"annotations": []
 	}
 }
