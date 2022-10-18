@@ -50,6 +50,9 @@
 		"briggs-b-wus-syn-01-WorkspaceDefaultSqlServer_connectionString": {
 			"value": ""
 		},
+		"Bruin_RestLinkedService_properties_typeProperties_url": {
+			"value": "https://api.bruin.com/"
+		},
 		"Netsuite_properties_typeProperties_userName": {
 			"value": "Team-SammonsDataTeam@sammonsindustrial.com"
 		},
@@ -73,9 +76,6 @@
 		},
 		"briggs-b-wus-syn-01-WorkspaceDefaultStorage_properties_typeProperties_url": {
 			"value": "https://briggsbetawusdls01.dfs.core.windows.net"
-		},
-		"Bruin_RestLinkedService_properties_typeProperties_url": {
-			"value": "https://api.bruin.com/"
 		}
 	}
 }
