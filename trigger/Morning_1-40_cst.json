@@ -2,7 +2,7 @@
 	"name": "Morning_1-40_cst",
 	"properties": {
 		"annotations": [],
-		"runtimeState": "Stopped",
+		"runtimeState": "Started",
 		"pipelines": [
 			{
 				"pipelineReference": {
