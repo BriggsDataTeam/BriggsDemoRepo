@@ -14006,6 +14006,9 @@
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
 				},
+				"folder": {
+					"name": "Salesforce"
+				},
 				"annotations": []
 			},
 			"dependsOn": [
@@ -14329,6 +14332,364 @@
 			"dependsOn": [
 				"[concat(variables('workspaceId'), '/datasets/AzureProdDatabase')]",
 				"[concat(variables('workspaceId'), '/datasets/Briggs_MDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/testing')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "ToSalesforce_copy1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT\n  e.entityid\n, e.altname AS AccountName\n, CASE WHEN es.entitytype IS NULL THEN NULL WHEN es.entitytype = 'LEAD' THEN 'Other' ELSE UPPER(LEFT(es.entitytype,1)) + LOWER(SUBSTRING(es.entitytype,2,LEN(es.entitytype))) END AS [Type]\n, e.email AS CustomerEmailAddress\n, c.CreditLimit AS CreditLimit\n, te.[name] AS CreditTerms\n, CASE WHEN c.custentity_por_payment_method = 3 THEN 'Account' WHEN c.custentity_por_payment_method IS NOT NULL THEN 'Cash' ELSE NULL END AS PaymentMethod\n, a.OpenBalance\n, e.Phone\n, REPLACE(REPLACE(RTRIM(CONCAT(LTRIM(RTRIM(ea.addr1)), ' ', LTRIM(RTRIM(ea.addr2)), ' ', LTRIM(RTRIM(ea.addr3)))), '  ', ' '),'  ', ' ') AS BillingStreet\n, ea.city AS BillingCity\n, ea.[state] AS BillingState\n, ea.zip AS BillingPostalCode\nFROM Netsuite.Entity e\nJOIN Netsuite.Customer c ON c.entityid = e.entityid\nJOIN Netsuite.EntityStatus es ON es.[key] = c.entitystatus\nLEFT JOIN Netsuite.term te ON te.id = c.terms\nLEFT JOIN Netsuite.EntityAddress ea ON ea.nkey = c.defaultbillingaddress\nLEFT JOIN (\n\tSELECT t.entity, CAST(SUM(ISNULL(tal.AmountUnpaid,0) - ISNULL(tal.PaymentAmountUnused,0)) AS DECIMAL(18,2)) AS OpenBalance\n\tFROM Netsuite.[Transaction] t\n\tJOIN Netsuite.TransactionLine tl ON t.id = tl.[transaction]\n\tJOIN Netsuite.TransactionAccountingLine tal ON tal.[transaction] = t.id\n\tWHERE t.posting = 'T'\n\tAND t.voided = 'F'\n\tAND tl.mainline = 'T'\n\tAND (tal.AmountUnpaid <> 0 OR tal.PaymentAmountUnused <> 0)\n\tAND t.abbrevtype IN ('CREDMEM','PMT','SALEINV')\n\tAND ISNULL(DATEDIFF(d,CAST(t.duedate AS DATE),GETDATE()),DATEDIFF(d,CAST(t.trandate AS DATE),GETDATE())) >= 1\n\tGROUP BY t.entity\n) a ON a.entity = e.id\nWHERE LEFT(c.entityid,1) = 'C'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "SalesforceSink",
+								"writeBatchSize": 5000,
+								"writeBehavior": "upsert",
+								"externalIdFieldName": "NetSuite_Customer_Number__c",
+								"ignoreNullValues": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "AccountName",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "Name",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Type",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "Type",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "BillingStreet",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "BillingStreet",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "BillingCity",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "BillingCity",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "BillingState",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "BillingState",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "BillingPostalCode",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "BillingPostalCode",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Phone",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "Phone",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "entityid",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "NetSuite_Customer_Number__c",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerEmailAddress",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "Customer_Email_Address__c",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CreditLimit",
+											"type": "Double",
+											"physicalType": "float"
+										},
+										"sink": {
+											"name": "Credit_Limit__c",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "CreditTerms",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "Credit_Terms__c",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "PaymentMethod",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "Payment_Method__c",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "OpenBalance",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 2,
+											"precision": 18
+										},
+										"sink": {
+											"name": "AR_Balance__c",
+											"type": "Decimal"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": false,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Briggs_MDW",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_name": "dbo",
+									"table_name": "user"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SalesforceObject",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "ToSalesforce",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT\n  e.entityid\n, CAST(SUM(ISNULL(tal.AmountUnpaid,0) - ISNULL(tal.PaymentAmountUnused,0)) AS DECIMAL(18,2)) AS OpenBalance\nFROM Netsuite.[Transaction] t\nJOIN Netsuite.TransactionLine tl ON t.id = tl.[transaction]\nJOIN Netsuite.TransactionAccountingLine tal ON tal.[transaction] = t.id\nJOIN Netsuite.Entity e ON e.id = t.entity\nWHERE t.posting = 'T'\nAND t.voided = 'F'\nAND tl.mainline = 'T'\nAND (tal.AmountUnpaid <> 0 OR tal.PaymentAmountUnused <> 0)\nAND t.abbrevtype IN ('CREDMEM','PMT','SALEINV')\nAND LEFT(e.entityid,1) = 'C'\nAND ISNULL(DATEDIFF(d,CAST(t.duedate AS DATE),GETDATE()),DATEDIFF(d,CAST(t.trandate AS DATE),GETDATE())) >= 1\nAND e.entityid = 'C103192'\nGROUP BY e.entityid\nORDER BY e.entityid",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "SalesforceSink",
+								"writeBatchSize": 5000,
+								"writeBehavior": "upsert",
+								"externalIdFieldName": "NetSuite_Customer_Number__c",
+								"ignoreNullValues": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "entityid",
+											"type": "String",
+											"physicalType": "nvarchar"
+										},
+										"sink": {
+											"name": "NetSuite_Customer_Number__c",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "OpenBalance",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 2,
+											"precision": 18
+										},
+										"sink": {
+											"name": "AR_Balance__c",
+											"type": "Decimal"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": false,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Briggs_MDW",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_name": "dbo",
+									"table_name": "user"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SalesforceObject",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "FromSalesforce_preview data",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ToSalesforce",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SalesforceSource",
+								"query": "SELECT *\nFROM Account\nWHERE LEFT(Netsuite_Customer_Number__c, 1) = 'C'\nORDER BY Netsuite_Customer_Number__c",
+								"readBehavior": "query"
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SalesforceObject",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ADLS_JSON_1",
+								"type": "DatasetReference",
+								"parameters": {
+									"ContainerName": "main",
+									"Path": "Data/Sammons Industrial/SiteProRentals/Salesforce/Account",
+									"FileName": "Account"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "annie"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/Briggs_MDW')]",
+				"[concat(variables('workspaceId'), '/datasets/SalesforceObject')]",
+				"[concat(variables('workspaceId'), '/datasets/DS_ADLS_JSON_1')]"
 			]
 		},
 		{
@@ -15732,364 +16093,6 @@
 			},
 			"dependsOn": [],
 			"location": "westus"
-		},
-		{
-			"name": "[concat(parameters('workspaceName'), '/testing')]",
-			"type": "Microsoft.Synapse/workspaces/pipelines",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"activities": [
-					{
-						"name": "ToSalesforce_copy1",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT\n  e.entityid\n, e.altname AS AccountName\n, CASE WHEN es.entitytype IS NULL THEN NULL WHEN es.entitytype = 'LEAD' THEN 'Other' ELSE UPPER(LEFT(es.entitytype,1)) + LOWER(SUBSTRING(es.entitytype,2,LEN(es.entitytype))) END AS [Type]\n, e.email AS CustomerEmailAddress\n, c.CreditLimit AS CreditLimit\n, te.[name] AS CreditTerms\n, CASE WHEN c.custentity_por_payment_method = 3 THEN 'Account' WHEN c.custentity_por_payment_method IS NOT NULL THEN 'Cash' ELSE NULL END AS PaymentMethod\n, a.OpenBalance\n, e.Phone\n, REPLACE(REPLACE(RTRIM(CONCAT(LTRIM(RTRIM(ea.addr1)), ' ', LTRIM(RTRIM(ea.addr2)), ' ', LTRIM(RTRIM(ea.addr3)))), '  ', ' '),'  ', ' ') AS BillingStreet\n, ea.city AS BillingCity\n, ea.[state] AS BillingState\n, ea.zip AS BillingPostalCode\nFROM Netsuite.Entity e\nJOIN Netsuite.Customer c ON c.entityid = e.entityid\nJOIN Netsuite.EntityStatus es ON es.[key] = c.entitystatus\nLEFT JOIN Netsuite.term te ON te.id = c.terms\nLEFT JOIN Netsuite.EntityAddress ea ON ea.nkey = c.defaultbillingaddress\nLEFT JOIN (\n\tSELECT t.entity, CAST(SUM(ISNULL(tal.AmountUnpaid,0) - ISNULL(tal.PaymentAmountUnused,0)) AS DECIMAL(18,2)) AS OpenBalance\n\tFROM Netsuite.[Transaction] t\n\tJOIN Netsuite.TransactionLine tl ON t.id = tl.[transaction]\n\tJOIN Netsuite.TransactionAccountingLine tal ON tal.[transaction] = t.id\n\tWHERE t.posting = 'T'\n\tAND t.voided = 'F'\n\tAND tl.mainline = 'T'\n\tAND (tal.AmountUnpaid <> 0 OR tal.PaymentAmountUnused <> 0)\n\tAND t.abbrevtype IN ('CREDMEM','PMT','SALEINV')\n\tAND ISNULL(DATEDIFF(d,CAST(t.duedate AS DATE),GETDATE()),DATEDIFF(d,CAST(t.trandate AS DATE),GETDATE())) >= 1\n\tGROUP BY t.entity\n) a ON a.entity = e.id\nWHERE LEFT(c.entityid,1) = 'C'",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "SalesforceSink",
-								"writeBatchSize": 5000,
-								"writeBehavior": "upsert",
-								"externalIdFieldName": "NetSuite_Customer_Number__c",
-								"ignoreNullValues": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "AccountName",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "Name",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "Type",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "Type",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "BillingStreet",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "BillingStreet",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "BillingCity",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "BillingCity",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "BillingState",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "BillingState",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "BillingPostalCode",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "BillingPostalCode",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "Phone",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "Phone",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "entityid",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "NetSuite_Customer_Number__c",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CustomerEmailAddress",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "Customer_Email_Address__c",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CreditLimit",
-											"type": "Double",
-											"physicalType": "float"
-										},
-										"sink": {
-											"name": "Credit_Limit__c",
-											"type": "Decimal"
-										}
-									},
-									{
-										"source": {
-											"name": "CreditTerms",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "Credit_Terms__c",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "PaymentMethod",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "Payment_Method__c",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "OpenBalance",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 2,
-											"precision": 18
-										},
-										"sink": {
-											"name": "AR_Balance__c",
-											"type": "Decimal"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": false,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Briggs_MDW",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_name": "dbo",
-									"table_name": "user"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "SalesforceObject",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "ToSalesforce",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT\n  e.entityid\n, CAST(SUM(ISNULL(tal.AmountUnpaid,0) - ISNULL(tal.PaymentAmountUnused,0)) AS DECIMAL(18,2)) AS OpenBalance\nFROM Netsuite.[Transaction] t\nJOIN Netsuite.TransactionLine tl ON t.id = tl.[transaction]\nJOIN Netsuite.TransactionAccountingLine tal ON tal.[transaction] = t.id\nJOIN Netsuite.Entity e ON e.id = t.entity\nWHERE t.posting = 'T'\nAND t.voided = 'F'\nAND tl.mainline = 'T'\nAND (tal.AmountUnpaid <> 0 OR tal.PaymentAmountUnused <> 0)\nAND t.abbrevtype IN ('CREDMEM','PMT','SALEINV')\nAND LEFT(e.entityid,1) = 'C'\nAND ISNULL(DATEDIFF(d,CAST(t.duedate AS DATE),GETDATE()),DATEDIFF(d,CAST(t.trandate AS DATE),GETDATE())) >= 1\nAND e.entityid = 'C103192'\nGROUP BY e.entityid\nORDER BY e.entityid",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "SalesforceSink",
-								"writeBatchSize": 5000,
-								"writeBehavior": "upsert",
-								"externalIdFieldName": "NetSuite_Customer_Number__c",
-								"ignoreNullValues": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "entityid",
-											"type": "String",
-											"physicalType": "nvarchar"
-										},
-										"sink": {
-											"name": "NetSuite_Customer_Number__c",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "OpenBalance",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 2,
-											"precision": 18
-										},
-										"sink": {
-											"name": "AR_Balance__c",
-											"type": "Decimal"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": false,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Briggs_MDW",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_name": "dbo",
-									"table_name": "user"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "SalesforceObject",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "FromSalesforce_preview data",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "ToSalesforce",
-								"dependencyConditions": [
-									"Failed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SalesforceSource",
-								"query": "SELECT *\nFROM Account\nWHERE LEFT(Netsuite_Customer_Number__c, 1) = 'C'\nORDER BY Netsuite_Customer_Number__c",
-								"readBehavior": "query"
-							},
-							"sink": {
-								"type": "JsonSink",
-								"storeSettings": {
-									"type": "AzureBlobStorageWriteSettings"
-								},
-								"formatSettings": {
-									"type": "JsonWriteSettings"
-								}
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SalesforceObject",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DS_ADLS_JSON_1",
-								"type": "DatasetReference",
-								"parameters": {
-									"ContainerName": "main",
-									"Path": "Data/Sammons Industrial/SiteProRentals/Salesforce/Account",
-									"FileName": "Account"
-								}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "annie"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('workspaceId'), '/datasets/Briggs_MDW')]",
-				"[concat(variables('workspaceId'), '/datasets/SalesforceObject')]",
-				"[concat(variables('workspaceId'), '/datasets/DS_ADLS_JSON_1')]"
-			]
 		}
 	]
 }
