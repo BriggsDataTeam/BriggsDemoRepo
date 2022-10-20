@@ -102,6 +102,10 @@
 		"briggs-b-wus-syn-01-WorkspaceDefaultStorage_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "https://briggsbetawusdls01.dfs.core.windows.net"
+		},
+		"RingCentral_RestLS_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://platform.devtest.ringcentral.com/"
 		}
 	},
 	"variables": {
@@ -16131,6 +16135,200 @@
 								"type": "Expression"
 							}
 						}
+					},
+					{
+						"name": "Get raw data to csv",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "GetBearerToken",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"additionalHeaders": {
+									"Authorization": {
+										"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+										"type": "Expression"
+									}
+								},
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "['userID']"
+										},
+										"sink": {
+											"name": "userID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['username']"
+										},
+										"sink": {
+											"name": "username",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['dirID']"
+										},
+										"sink": {
+											"name": "dirID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['firstName']"
+										},
+										"sink": {
+											"name": "firstName",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['lastName']"
+										},
+										"sink": {
+											"name": "lastName",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['clientID']"
+										},
+										"sink": {
+											"name": "clientID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['title']"
+										},
+										"sink": {
+											"name": "title",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['phoneNumber']"
+										},
+										"sink": {
+											"name": "phoneNumber",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['role']"
+										},
+										"sink": {
+											"name": "role",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['address']"
+										},
+										"sink": {
+											"name": "address",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['status']"
+										},
+										"sink": {
+											"name": "status",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['employeeID']"
+										},
+										"sink": {
+											"name": "employeeID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['mobileNumber']"
+										},
+										"sink": {
+											"name": "mobileNumber",
+											"type": "String"
+										}
+									}
+								],
+								"collectionReference": "$['documents']",
+								"mapComplexValuesToString": false
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "RingCentral_RestDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ABS_CSV",
+								"type": "DatasetReference",
+								"parameters": {
+									"ContainerName": "main",
+									"Path": "Data/Sammons Industrial/Sammons Industrial/RingCentral",
+									"FileName": {
+										"value": "@concat('RingCentral_UsersAPI_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMddHHmmss'),'.csv')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
 					}
 				],
 				"policy": {
@@ -16143,7 +16341,51 @@
 				"annotations": []
 			},
 			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
+				"[concat(variables('workspaceId'), '/datasets/RingCentral_RestDataset')]",
+				"[concat(variables('workspaceId'), '/datasets/DS_ABS_CSV')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/RingCentral_RestLS')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "RingCentral's base URL",
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('RingCentral_RestLS_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
 				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/RingCentral_RestDataset')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "RingCentral_RestLS",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": "restapi/v1.0/account/~/extension"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/RingCentral_RestLS')]"
 			]
 		}
 	]
