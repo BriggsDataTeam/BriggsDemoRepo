@@ -1,0 +1,15 @@
+{
+	"name": "RingCentral_RestDataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "RingCentral_RestLS",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": "restapi/v1.0/account/~/extension"
+		},
+		"schema": []
+	}
+}
