@@ -1,0 +1,17 @@
+{
+	"name": "RingCentral_RestLS",
+	"properties": {
+		"description": "RingCentral's base URL",
+		"annotations": [],
+		"type": "RestService",
+		"typeProperties": {
+			"url": "https://platform.devtest.ringcentral.com/",
+			"enableServerCertificateValidation": true,
+			"authenticationType": "Anonymous"
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}
