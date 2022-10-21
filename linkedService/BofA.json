@@ -1,0 +1,21 @@
+{
+	"name": "BofA",
+	"type": "Microsoft.Synapse/workspaces/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "Sftp",
+		"typeProperties": {
+			"host": "b2b02u.bankofamerica.com",
+			"port": 22,
+			"skipHostKeyValidation": false,
+			"hostKeyFingerprint": "ssh-rsa 2048 a0:02:ba:59:ae:d3:eb:53:ea:d3:aa:39:77:1d:e5:b1",
+			"authenticationType": "Basic",
+			"userName": "sitepror",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIlNZTkFQU0VAM0Q2MjM2OUItM0Y1RC00RUE0LThBNUEtQzJEQzU5OTg2NzU2X2U0MTIyMjEwLTQxYmQtNDBkNC1iYWRjLTRiMjJiMTUyN2Q2OSINCn0="
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}
