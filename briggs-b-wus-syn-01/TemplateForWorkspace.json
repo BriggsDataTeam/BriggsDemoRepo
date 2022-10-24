@@ -129,7 +129,7 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('workspaceName'), '/Billtrust')]",
+			"name": "[concat(parameters('workspaceName'), '/BOA_FileGrab')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
