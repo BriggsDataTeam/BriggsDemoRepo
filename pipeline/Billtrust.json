@@ -50,7 +50,15 @@
 				"outputs": [
 					{
 						"referenceName": "DS_ABS_PipeDel",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"ContainerName": "main",
+							"Path": "Data/Sammons Industrial/SiteProRentals",
+							"FileName": {
+								"value": "@concat('BOA_FileGrab_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMddHHmmss'),'.csv')",
+								"type": "Expression"
+							}
+						}
 					}
 				]
 			}
