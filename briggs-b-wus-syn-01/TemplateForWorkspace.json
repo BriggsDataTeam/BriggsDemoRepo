@@ -135,7 +135,7 @@
 			"properties": {
 				"activities": [
 					{
-						"name": "BOA",
+						"name": "CopyData_BOAtest",
 						"description": "NOTE:\n**Get file requirements",
 						"type": "Copy",
 						"dependsOn": [],
