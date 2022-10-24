@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Copy data1",
+				"name": "CopyData_BOAtest",
 				"description": "NOTE:\n**Get file requirements",
 				"type": "Copy",
 				"dependsOn": [],
