@@ -20,6 +20,9 @@
 		"AzureSqlDatabase1_connectionString": {
 			"value": ""
 		},
+		"BofA_password": {
+			"value": ""
+		},
 		"Briggs_Dataset_connectionString": {
 			"value": ""
 		},
@@ -50,6 +53,15 @@
 		"briggs-b-wus-syn-01-WorkspaceDefaultSqlServer_connectionString": {
 			"value": ""
 		},
+		"BofA_properties_typeProperties_host": {
+			"value": "b2b02u.bankofamerica.com"
+		},
+		"BofA_properties_typeProperties_hostKeyFingerprint": {
+			"value": "ssh-rsa 2048 a0:02:ba:59:ae:d3:eb:53:ea:d3:aa:39:77:1d:e5:b1"
+		},
+		"BofA_properties_typeProperties_userName": {
+			"value": "sitepror"
+		},
 		"Bruin_RestLinkedService_properties_typeProperties_url": {
 			"value": "https://api.bruin.com/"
 		},
@@ -58,6 +70,9 @@
 		},
 		"RestService_Ceridian_properties_typeProperties_url": {
 			"value": "https://us63-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/"
+		},
+		"RingCentral_RestLS_properties_typeProperties_url": {
+			"value": "https://platform.devtest.ringcentral.com/"
 		},
 		"RouseSFTP_properties_typeProperties_host": {
 			"value": "ftp.rouseservices.com"
@@ -76,9 +91,6 @@
 		},
 		"briggs-b-wus-syn-01-WorkspaceDefaultStorage_properties_typeProperties_url": {
 			"value": "https://briggsbetawusdls01.dfs.core.windows.net"
-		},
-		"RingCentral_RestLS_properties_typeProperties_url": {
-			"value": "https://platform.devtest.ringcentral.com/"
 		}
 	}
 }

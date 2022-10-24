@@ -27,6 +27,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase1'"
 		},
+		"BofA_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'BofA'"
+		},
 		"Briggs_Dataset_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'Briggs_Dataset'"
@@ -67,6 +71,18 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'briggs-b-wus-syn-01-WorkspaceDefaultSqlServer'"
 		},
+		"BofA_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "b2b02u.bankofamerica.com"
+		},
+		"BofA_properties_typeProperties_hostKeyFingerprint": {
+			"type": "string",
+			"defaultValue": "ssh-rsa 2048 a0:02:ba:59:ae:d3:eb:53:ea:d3:aa:39:77:1d:e5:b1"
+		},
+		"BofA_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "sitepror"
+		},
 		"Bruin_RestLinkedService_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "https://api.bruin.com/"
@@ -78,6 +94,10 @@
 		"RestService_Ceridian_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "https://us63-services.dayforcehcm.com/Api/siteprorentals/V1/Reports/"
+		},
+		"RingCentral_RestLS_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://platform.devtest.ringcentral.com/"
 		},
 		"RouseSFTP_properties_typeProperties_host": {
 			"type": "string",
@@ -102,16 +122,94 @@
 		"briggs-b-wus-syn-01-WorkspaceDefaultStorage_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "https://briggsbetawusdls01.dfs.core.windows.net"
-		},
-		"RingCentral_RestLS_properties_typeProperties_url": {
-			"type": "string",
-			"defaultValue": "https://platform.devtest.ringcentral.com/"
 		}
 	},
 	"variables": {
 		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/Billtrust')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "BOA",
+						"description": "NOTE:\n**Get file requirements",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "SftpReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false,
+									"disableChunking": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "BOA_FilePull",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ABS_PipeDel",
+								"type": "DatasetReference",
+								"parameters": {
+									"ContainerName": "main",
+									"Path": "Data/Sammons Industrial/SiteProRentals",
+									"FileName": {
+										"value": "@concat('BOA_FileGrab_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMddHHmmss'),'.csv')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "annie"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/BOA_FilePull')]",
+				"[concat(variables('workspaceId'), '/datasets/DS_ABS_PipeDel')]"
+			]
+		},
 		{
 			"name": "[concat(parameters('workspaceName'), '/EmailSendFailure')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
@@ -13799,6 +13897,254 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/RingCentral_JWT')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetBearerToken",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": "https://platform.devtest.ringcentral.com/restapi/oauth/token",
+							"connectVia": {
+								"referenceName": "AutoResolveIntegrationRuntime",
+								"type": "IntegrationRuntimeReference"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-type": "application/x-www-form-urlencoded",
+								"Authorization": {
+									"value": "@concat('Basic ', base64('jNW_3spcQZWYyqu5mBE5hQ:DDJbGUXzRuGLHylvm13JNQtSjd3XGbSVehASpe9bbttw'))",
+									"type": "Expression"
+								}
+							},
+							"body": {
+								"value": "@concat('grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=','eyJraWQiOiI4NzYyZjU5OGQwNTk0NGRiODZiZjVjYTk3ODA0NzYwOCIsInR5cCI6IkpXVCIsImFsZyI6IlJTMjU2In0.eyJhdWQiOiJodHRwczpcL1wvcGxhdGZvcm0uZGV2dGVzdC5yaW5nY2VudHJhbC5jb21cL3Jlc3RhcGlcL29hdXRoXC90b2tlbiIsInN1YiI6Ijc0ODc1MjAwNSIsImlzcyI6Imh0dHBzOlwvXC9wbGF0Zm9ybS5kZXZ0ZXN0LnJpbmdjZW50cmFsLmNvbSIsImV4cCI6MzgxMzA4MTY3NiwiaWF0IjoxNjY1NTk4MDI5LCJqdGkiOiJ6STZlOWdXU1NueVNNQ3p5bjhyRm1nIn0.Uno8K_3G78A_KSkI_kmaFOYrgy1Pqzyza83q6zauTn6JjwgxILR52WIRRfcfgwGOa7_3s0pC9_1ixr3r715izCb5ZudLFMcjeIBn1rSIyLVloFhRov9xpiIXeb6Er3rXPIjRXU1xOwB35i8mIKjp2Bd2YE72mbjH70X0b2EEiYK5k0kDwO8R0FstA8sEbJPPxKB6YD3adiaXwbszj-AuLZv7Maik5ezwxnK6E3BKI4jdOVPjwinz7l0CrcsIgk6K2DplhluERESn44INey2qzffkbQsf_BqRd-P6N0P1tvpdlplBGgTgurWcpUc2ia0mJEOukul_zEyp0Yf6bj2_4Q')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Get raw data to csv",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "GetBearerToken",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"additionalHeaders": {
+									"Authorization": {
+										"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+										"type": "Expression"
+									}
+								},
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "['userID']"
+										},
+										"sink": {
+											"name": "userID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['username']"
+										},
+										"sink": {
+											"name": "username",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['dirID']"
+										},
+										"sink": {
+											"name": "dirID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['firstName']"
+										},
+										"sink": {
+											"name": "firstName",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['lastName']"
+										},
+										"sink": {
+											"name": "lastName",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['clientID']"
+										},
+										"sink": {
+											"name": "clientID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['title']"
+										},
+										"sink": {
+											"name": "title",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['phoneNumber']"
+										},
+										"sink": {
+											"name": "phoneNumber",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['role']"
+										},
+										"sink": {
+											"name": "role",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['address']"
+										},
+										"sink": {
+											"name": "address",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['status']"
+										},
+										"sink": {
+											"name": "status",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['employeeID']"
+										},
+										"sink": {
+											"name": "employeeID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['mobileNumber']"
+										},
+										"sink": {
+											"name": "mobileNumber",
+											"type": "String"
+										}
+									}
+								],
+								"collectionReference": "$['documents']",
+								"mapComplexValuesToString": false
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "RingCentral_RestDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ABS_CSV",
+								"type": "DatasetReference",
+								"parameters": {
+									"ContainerName": "main",
+									"Path": "Data/Sammons Industrial/Sammons Industrial/RingCentral",
+									"FileName": {
+										"value": "@concat('RingCentral_UsersAPI_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMddHHmmss'),'.csv')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "annie"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
+				"[concat(variables('workspaceId'), '/datasets/RingCentral_RestDataset')]",
+				"[concat(variables('workspaceId'), '/datasets/DS_ABS_CSV')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/Salesforce')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -15261,6 +15607,26 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/RingCentral_RestDataset')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "RingCentral_RestLS",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": "restapi/v1.0/account/~/extension"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/RingCentral_RestLS')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/RouseFileFeed')]",
 			"type": "Microsoft.Synapse/workspaces/datasets",
 			"apiVersion": "2019-06-01-preview",
@@ -15404,6 +15770,34 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/BofA')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "Sftp",
+				"typeProperties": {
+					"host": "[parameters('BofA_properties_typeProperties_host')]",
+					"port": 22,
+					"skipHostKeyValidation": false,
+					"hostKeyFingerprint": "[parameters('BofA_properties_typeProperties_hostKeyFingerprint')]",
+					"authenticationType": "Basic",
+					"userName": "[parameters('BofA_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('BofA_password')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/Briggs_Dataset')]",
 			"type": "Microsoft.Synapse/workspaces/linkedServices",
 			"apiVersion": "2019-06-01-preview",
@@ -15521,6 +15915,28 @@
 				"typeProperties": {
 					"url": "[parameters('RestService_Ceridian_properties_typeProperties_url')]",
 					"enableServerCertificateValidation": false,
+					"authenticationType": "Anonymous"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/RingCentral_RestLS')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "RingCentral's base URL",
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('RingCentral_RestLS_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
 					"authenticationType": "Anonymous"
 				},
 				"connectVia": {
@@ -16099,293 +16515,79 @@
 			"location": "westus"
 		},
 		{
-			"name": "[concat(parameters('workspaceName'), '/RingCentral_JWT')]",
-			"type": "Microsoft.Synapse/workspaces/pipelines",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"activities": [
-					{
-						"name": "GetBearerToken",
-						"type": "WebActivity",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"url": "https://platform.devtest.ringcentral.com/restapi/oauth/token",
-							"connectVia": {
-								"referenceName": "AutoResolveIntegrationRuntime",
-								"type": "IntegrationRuntimeReference"
-							},
-							"method": "POST",
-							"headers": {
-								"Content-type": "application/x-www-form-urlencoded",
-								"Authorization": {
-									"value": "@concat('Basic ', base64('jNW_3spcQZWYyqu5mBE5hQ:DDJbGUXzRuGLHylvm13JNQtSjd3XGbSVehASpe9bbttw'))",
-									"type": "Expression"
-								}
-							},
-							"body": {
-								"value": "@concat('grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=','eyJraWQiOiI4NzYyZjU5OGQwNTk0NGRiODZiZjVjYTk3ODA0NzYwOCIsInR5cCI6IkpXVCIsImFsZyI6IlJTMjU2In0.eyJhdWQiOiJodHRwczpcL1wvcGxhdGZvcm0uZGV2dGVzdC5yaW5nY2VudHJhbC5jb21cL3Jlc3RhcGlcL29hdXRoXC90b2tlbiIsInN1YiI6Ijc0ODc1MjAwNSIsImlzcyI6Imh0dHBzOlwvXC9wbGF0Zm9ybS5kZXZ0ZXN0LnJpbmdjZW50cmFsLmNvbSIsImV4cCI6MzgxMzA4MTY3NiwiaWF0IjoxNjY1NTk4MDI5LCJqdGkiOiJ6STZlOWdXU1NueVNNQ3p5bjhyRm1nIn0.Uno8K_3G78A_KSkI_kmaFOYrgy1Pqzyza83q6zauTn6JjwgxILR52WIRRfcfgwGOa7_3s0pC9_1ixr3r715izCb5ZudLFMcjeIBn1rSIyLVloFhRov9xpiIXeb6Er3rXPIjRXU1xOwB35i8mIKjp2Bd2YE72mbjH70X0b2EEiYK5k0kDwO8R0FstA8sEbJPPxKB6YD3adiaXwbszj-AuLZv7Maik5ezwxnK6E3BKI4jdOVPjwinz7l0CrcsIgk6K2DplhluERESn44INey2qzffkbQsf_BqRd-P6N0P1tvpdlplBGgTgurWcpUc2ia0mJEOukul_zEyp0Yf6bj2_4Q')",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "Get raw data to csv",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "GetBearerToken",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"additionalHeaders": {
-									"Authorization": {
-										"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
-										"type": "Expression"
-									}
-								},
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "DelimitedTextSink",
-								"storeSettings": {
-									"type": "AzureBlobStorageWriteSettings"
-								},
-								"formatSettings": {
-									"type": "DelimitedTextWriteSettings",
-									"quoteAllText": true,
-									"fileExtension": ".txt"
-								}
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"path": "['userID']"
-										},
-										"sink": {
-											"name": "userID",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['username']"
-										},
-										"sink": {
-											"name": "username",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['dirID']"
-										},
-										"sink": {
-											"name": "dirID",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['firstName']"
-										},
-										"sink": {
-											"name": "firstName",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['lastName']"
-										},
-										"sink": {
-											"name": "lastName",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['clientID']"
-										},
-										"sink": {
-											"name": "clientID",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['title']"
-										},
-										"sink": {
-											"name": "title",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['phoneNumber']"
-										},
-										"sink": {
-											"name": "phoneNumber",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['role']"
-										},
-										"sink": {
-											"name": "role",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['address']"
-										},
-										"sink": {
-											"name": "address",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['status']"
-										},
-										"sink": {
-											"name": "status",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['employeeID']"
-										},
-										"sink": {
-											"name": "employeeID",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['mobileNumber']"
-										},
-										"sink": {
-											"name": "mobileNumber",
-											"type": "String"
-										}
-									}
-								],
-								"collectionReference": "$['documents']",
-								"mapComplexValuesToString": false
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "RingCentral_RestDataset",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "DS_ABS_CSV",
-								"type": "DatasetReference",
-								"parameters": {
-									"ContainerName": "main",
-									"Path": "Data/Sammons Industrial/Sammons Industrial/RingCentral",
-									"FileName": {
-										"value": "@concat('RingCentral_UsersAPI_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMddHHmmss'),'.csv')",
-										"type": "Expression"
-									}
-								}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "annie"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
-				"[concat(variables('workspaceId'), '/datasets/RingCentral_RestDataset')]",
-				"[concat(variables('workspaceId'), '/datasets/DS_ABS_CSV')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('workspaceName'), '/RingCentral_RestLS')]",
-			"type": "Microsoft.Synapse/workspaces/linkedServices",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"description": "RingCentral's base URL",
-				"annotations": [],
-				"type": "RestService",
-				"typeProperties": {
-					"url": "[parameters('RingCentral_RestLS_properties_typeProperties_url')]",
-					"enableServerCertificateValidation": true,
-					"authenticationType": "Anonymous"
-				},
-				"connectVia": {
-					"referenceName": "AutoResolveIntegrationRuntime",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('workspaceName'), '/RingCentral_RestDataset')]",
+			"name": "[concat(parameters('workspaceName'), '/BOA_FilePull')]",
 			"type": "Microsoft.Synapse/workspaces/datasets",
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "RingCentral_RestLS",
+					"referenceName": "BofA",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
-				"type": "RestResource",
+				"type": "DelimitedText",
 				"typeProperties": {
-					"relativeUrl": "restapi/v1.0/account/~/extension"
+					"location": {
+						"type": "SftpLocation",
+						"fileName": "something.txt",
+						"folderPath": "/outgoing"
+					},
+					"columnDelimiter": "|",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
 				},
 				"schema": []
 			},
 			"dependsOn": [
-				"[concat(variables('workspaceId'), '/linkedServices/RingCentral_RestLS')]"
+				"[concat(variables('workspaceId'), '/linkedServices/BofA')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/DS_ABS_PipeDel')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"ContainerName": {
+						"type": "string"
+					},
+					"Path": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().Path",
+							"type": "Expression"
+						},
+						"container": {
+							"value": "@dataset().ContainerName",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": "|",
+					"escapeChar": "\\",
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/AzureBlobStorage2')]"
 			]
 		}
 	]
