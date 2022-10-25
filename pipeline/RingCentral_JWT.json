@@ -86,34 +86,7 @@
 						"mappings": [
 							{
 								"source": {
-									"path": "['userID']"
-								},
-								"sink": {
-									"name": "userID",
-									"type": "String"
-								}
-							},
-							{
-								"source": {
-									"path": "['username']"
-								},
-								"sink": {
-									"name": "username",
-									"type": "String"
-								}
-							},
-							{
-								"source": {
-									"path": "['dirID']"
-								},
-								"sink": {
-									"name": "dirID",
-									"type": "String"
-								}
-							},
-							{
-								"source": {
-									"path": "['firstName']"
+									"path": "['contact']['firstName']"
 								},
 								"sink": {
 									"name": "firstName",
@@ -122,7 +95,7 @@
 							},
 							{
 								"source": {
-									"path": "['lastName']"
+									"path": "['contact']['lastName']"
 								},
 								"sink": {
 									"name": "lastName",
@@ -131,46 +104,64 @@
 							},
 							{
 								"source": {
-									"path": "['clientID']"
+									"path": "['contact']['jobTitle']"
 								},
 								"sink": {
-									"name": "clientID",
+									"name": "jobTitle",
 									"type": "String"
 								}
 							},
 							{
 								"source": {
-									"path": "['title']"
+									"path": "['contact']['department']"
 								},
 								"sink": {
-									"name": "title",
+									"name": "department",
 									"type": "String"
 								}
 							},
 							{
 								"source": {
-									"path": "['phoneNumber']"
+									"path": "['contact']['email']"
 								},
 								"sink": {
-									"name": "phoneNumber",
+									"name": "email",
 									"type": "String"
 								}
 							},
 							{
 								"source": {
-									"path": "['role']"
+									"path": "['contact']['businessPhone']"
 								},
 								"sink": {
-									"name": "role",
+									"name": "businessPhone",
 									"type": "String"
 								}
 							},
 							{
 								"source": {
-									"path": "['address']"
+									"path": "['contact']['emailAsLoginName']"
 								},
 								"sink": {
-									"name": "address",
+									"name": "emailAsLoginName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['name']"
+								},
+								"sink": {
+									"name": "name",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['type']"
+								},
+								"sink": {
+									"name": "type",
 									"type": "String"
 								}
 							},
@@ -185,25 +176,16 @@
 							},
 							{
 								"source": {
-									"path": "['employeeID']"
+									"path": "['permissions']['admin']['enabled']"
 								},
 								"sink": {
-									"name": "employeeID",
-									"type": "String"
-								}
-							},
-							{
-								"source": {
-									"path": "['mobileNumber']"
-								},
-								"sink": {
-									"name": "mobileNumber",
+									"name": "enabled",
 									"type": "String"
 								}
 							}
 						],
-						"collectionReference": "$['documents']",
-						"mapComplexValuesToString": false
+						"collectionReference": "$['records']",
+						"mapComplexValuesToString": true
 					}
 				},
 				"inputs": [
