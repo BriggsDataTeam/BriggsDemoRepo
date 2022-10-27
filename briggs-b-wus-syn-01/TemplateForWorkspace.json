@@ -211,6 +211,490 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/Billtrust_FileDrop')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "CopyData_BilltrustTest",
+						"description": "Get data from briggsmdw\nDrop into sftp",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT\n  t.tranid AS InvoiceNumber\n, SUM(CAST(t.totalaftertaxes AS DECIMAL(18,2))) AS InvoiceAmount\n, SUM(CAST(t.foreignamountunpaid AS DECIMAL(18,2))) AS OpenAmount\n, SUM(CAST(t.custbody_celigo_disc_total_variance AS DECIMAL(18,2))) AS DiscountAmount\n, SUM(CAST(t.baseshippingtaxamount AS DECIMAL(18,2))) AS FreightAmount\n, SUM(CAST(t.taxtotal AS DECIMAL(18,2))) AS TaxAmount\n, CONVERT(VARCHAR(10), CAST(t.trandate AS DATE), 101) AS InvoiceDate\n, t.otherrefnum AS PONumber\n, '' AS StatementNumber\n, '' AS StatementAmount --SUM when values exist\n, '' AS ParentCustomerNumber\n, c.entityid AS CustomerNumber\n, t.custbody_customer_company_name AS CustomerName\n, ea.addr1 AS CustomerAddress1\n, REPLACE(REPLACE(RTRIM(CONCAT(LTRIM(RTRIM(ea.addr2)), ' ', LTRIM(RTRIM(ea.addr3)))), '  ', ' '),'  ', ' ') AS CustomerAddress2\n, ea.city AS CustomerCity\n, ea.[state] AS CustomerState\n, ea.zip AS CustomerZip\n, '0.00' AS CustomMoney1\n, '0.00' AS CustomMoney2\n, t.id AS CustomField1\n, '' AS CustomField2\n, '' AS CustomField3\n, '' AS CustomField4\n, '' AS CustomField5\n, '' AS CustomField6\n, '' AS CustomField7\n, '' AS CustomField8\n, '' AS CustomField9\n, '' AS CustomField10\n, '' AS CustomField11\n, '' AS CustomField12\n, '' AS CustomField13\n, '' AS CustomField14\n, '' AS CustomField15\n, '' AS CustomField16\n, '' AS CustomField17\n, '' AS CustomField18\n, '' AS CustomField19\n, '' AS CustomField20\n\nFROM Netsuite.[Transaction] t\nJOIN Netsuite.Customer c ON t.entity = c.id\nLEFT JOIN Netsuite.EntityAddress ea ON ea.nkey = c.defaultbillingaddress\nWHERE t.[type] IN ('CashSale', 'CustInvc')\nAND t.foreignAmountUnpaid > 0.00\nGROUP BY\n  t.tranid\n, CONVERT(VARCHAR(10), CAST(t.trandate AS DATE), 101)\n, t.otherrefnum\n, c.entityid\n, t.custbody_customer_company_name\n, ea.addr1\n, REPLACE(REPLACE(RTRIM(CONCAT(LTRIM(RTRIM(ea.addr2)), ' ', LTRIM(RTRIM(ea.addr3)))), '  ', ' '),'  ', ' ')\n, ea.city\n, ea.[state]\n, ea.zip\n, t.id\nORDER BY t.id",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "InvoiceNumber",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 1
+										}
+									},
+									{
+										"source": {
+											"name": "InvoiceAmount",
+											"type": "Decimal"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 2
+										}
+									},
+									{
+										"source": {
+											"name": "OpenAmount",
+											"type": "Decimal"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 3
+										}
+									},
+									{
+										"source": {
+											"name": "DiscountAmount",
+											"type": "Decimal"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 4
+										}
+									},
+									{
+										"source": {
+											"name": "FreightAmount",
+											"type": "Decimal"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 5
+										}
+									},
+									{
+										"source": {
+											"name": "TaxAmount",
+											"type": "Decimal"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 6
+										}
+									},
+									{
+										"source": {
+											"name": "InvoiceDate",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 7
+										}
+									},
+									{
+										"source": {
+											"name": "PONumber",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 8
+										}
+									},
+									{
+										"source": {
+											"name": "StatementNumber",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 9
+										}
+									},
+									{
+										"source": {
+											"name": "StatementAmount",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 10
+										}
+									},
+									{
+										"source": {
+											"name": "ParentCustomerNumber",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 11
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerNumber",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 12
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerName",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 13
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerAddress1",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 14
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerAddress2",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 15
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerCity",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 16
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerState",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 17
+										}
+									},
+									{
+										"source": {
+											"name": "CustomerZip",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 18
+										}
+									},
+									{
+										"source": {
+											"name": "CustomMoney1",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 19
+										}
+									},
+									{
+										"source": {
+											"name": "CustomMoney2",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 20
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField1",
+											"type": "Int64"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 21
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField2",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 22
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField3",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 23
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField4",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 24
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField5",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 25
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField6",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 26
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField7",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 27
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField8",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 28
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField9",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 29
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField10",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 30
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField11",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 31
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField12",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 32
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField13",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 33
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField14",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 34
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField15",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 35
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField16",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 36
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField17",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 37
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField18",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 38
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField19",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 39
+										}
+									},
+									{
+										"source": {
+											"name": "CustomField20",
+											"type": "String"
+										},
+										"sink": {
+											"type": "String",
+											"ordinal": 40
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Briggs_MDW",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_name": "dbo",
+									"table_name": "user"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ABS_PipeDel",
+								"type": "DatasetReference",
+								"parameters": {
+									"ContainerName": "main",
+									"Path": "Data/Sammons Industrial/SiteProRentals/ToBillTrust",
+									"FileName": {
+										"value": "@concat('val_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMdd'),'.txt')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "annie"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/Briggs_MDW')]",
+				"[concat(variables('workspaceId'), '/datasets/DS_ABS_PipeDel')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/EmailSendFailure')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -13666,118 +14150,6 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('workspaceName'), '/Prashant')]",
-			"type": "Microsoft.Synapse/workspaces/pipelines",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 10
-						}
-					},
-					{
-						"name": "Wait2",
-						"type": "Wait",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Validation1",
-						"type": "Validation",
-						"dependsOn": [
-							{
-								"activity": "Wait2",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "RouseFileFeed",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"timeout": "0.12:00:00",
-							"sleep": 10
-						}
-					},
-					{
-						"name": "Wait3",
-						"type": "Wait",
-						"dependsOn": [
-							{
-								"activity": "Validation1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 2
-						}
-					},
-					{
-						"name": "Wait4",
-						"type": "Wait",
-						"dependsOn": [
-							{
-								"activity": "Wait3",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 2
-						}
-					},
-					{
-						"name": "Wait5",
-						"type": "Wait",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('workspaceId'), '/datasets/RouseFileFeed')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('workspaceName'), '/ResumeDB')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -13986,34 +14358,7 @@
 								"mappings": [
 									{
 										"source": {
-											"path": "['userID']"
-										},
-										"sink": {
-											"name": "userID",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['username']"
-										},
-										"sink": {
-											"name": "username",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['dirID']"
-										},
-										"sink": {
-											"name": "dirID",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['firstName']"
+											"path": "['contact']['firstName']"
 										},
 										"sink": {
 											"name": "firstName",
@@ -14022,7 +14367,7 @@
 									},
 									{
 										"source": {
-											"path": "['lastName']"
+											"path": "['contact']['lastName']"
 										},
 										"sink": {
 											"name": "lastName",
@@ -14031,46 +14376,64 @@
 									},
 									{
 										"source": {
-											"path": "['clientID']"
+											"path": "['contact']['jobTitle']"
 										},
 										"sink": {
-											"name": "clientID",
+											"name": "jobTitle",
 											"type": "String"
 										}
 									},
 									{
 										"source": {
-											"path": "['title']"
+											"path": "['contact']['department']"
 										},
 										"sink": {
-											"name": "title",
+											"name": "department",
 											"type": "String"
 										}
 									},
 									{
 										"source": {
-											"path": "['phoneNumber']"
+											"path": "['contact']['email']"
 										},
 										"sink": {
-											"name": "phoneNumber",
+											"name": "email",
 											"type": "String"
 										}
 									},
 									{
 										"source": {
-											"path": "['role']"
+											"path": "['contact']['businessPhone']"
 										},
 										"sink": {
-											"name": "role",
+											"name": "businessPhone",
 											"type": "String"
 										}
 									},
 									{
 										"source": {
-											"path": "['address']"
+											"path": "['contact']['emailAsLoginName']"
 										},
 										"sink": {
-											"name": "address",
+											"name": "emailAsLoginName",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['name']"
+										},
+										"sink": {
+											"name": "name",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['type']"
+										},
+										"sink": {
+											"name": "type",
 											"type": "String"
 										}
 									},
@@ -14085,25 +14448,16 @@
 									},
 									{
 										"source": {
-											"path": "['employeeID']"
+											"path": "['permissions']['admin']['enabled']"
 										},
 										"sink": {
-											"name": "employeeID",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"path": "['mobileNumber']"
-										},
-										"sink": {
-											"name": "mobileNumber",
+											"name": "enabled",
 											"type": "String"
 										}
 									}
 								],
-								"collectionReference": "$['documents']",
-								"mapComplexValuesToString": false
+								"collectionReference": "$['records']",
+								"mapComplexValuesToString": true
 							}
 						},
 						"inputs": [
@@ -15247,6 +15601,34 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/BOA_FilePull')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "BofA",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "SftpLocation",
+						"fileName": "something.txt",
+						"folderPath": "/outgoing"
+					},
+					"columnDelimiter": "|",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/BofA')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/Briggs_Dataset')]",
 			"type": "Microsoft.Synapse/workspaces/datasets",
 			"apiVersion": "2019-06-01-preview",
@@ -15403,6 +15785,55 @@
 					"escapeChar": "\\",
 					"firstRowAsHeader": true,
 					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/AzureBlobStorage2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/DS_ABS_PipeDel')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"ContainerName": {
+						"type": "string"
+					},
+					"Path": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().Path",
+							"type": "Expression"
+						},
+						"container": {
+							"value": "@dataset().ContainerName",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": "|",
+					"escapeChar": "\\",
+					"firstRowAsHeader": false,
+					"quoteChar": ""
 				},
 				"schema": []
 			},
@@ -16513,82 +16944,6 @@
 			},
 			"dependsOn": [],
 			"location": "westus"
-		},
-		{
-			"name": "[concat(parameters('workspaceName'), '/BOA_FilePull')]",
-			"type": "Microsoft.Synapse/workspaces/datasets",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "BofA",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "SftpLocation",
-						"fileName": "something.txt",
-						"folderPath": "/outgoing"
-					},
-					"columnDelimiter": "|",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('workspaceId'), '/linkedServices/BofA')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('workspaceName'), '/DS_ABS_PipeDel')]",
-			"type": "Microsoft.Synapse/workspaces/datasets",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage2",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"ContainerName": {
-						"type": "string"
-					},
-					"Path": {
-						"type": "string"
-					},
-					"FileName": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"fileName": {
-							"value": "@dataset().FileName",
-							"type": "Expression"
-						},
-						"folderPath": {
-							"value": "@dataset().Path",
-							"type": "Expression"
-						},
-						"container": {
-							"value": "@dataset().ContainerName",
-							"type": "Expression"
-						}
-					},
-					"columnDelimiter": "|",
-					"escapeChar": "\\",
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('workspaceId'), '/linkedServices/AzureBlobStorage2')]"
-			]
 		}
 	]
 }
