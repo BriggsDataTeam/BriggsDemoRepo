@@ -672,7 +672,7 @@
 									"ContainerName": "main",
 									"Path": "Data/Sammons Industrial/SiteProRentals/ToBillTrust",
 									"FileName": {
-										"value": "@concat('val_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMdd'),'.txt')",
+										"value": "@concat('val_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'MMddyyyy'),'.txt')",
 										"type": "Expression"
 									}
 								}
