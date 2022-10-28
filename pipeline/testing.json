@@ -203,7 +203,7 @@
 				]
 			},
 			{
-				"name": "ToSalesforce",
+				"name": "ToSalesforce_initial",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
@@ -286,7 +286,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "ToSalesforce",
+						"activity": "ToSalesforce_initial",
 						"dependencyConditions": [
 							"Failed"
 						]
