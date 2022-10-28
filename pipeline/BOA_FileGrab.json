@@ -17,48 +17,37 @@
 				"userProperties": [],
 				"typeProperties": {
 					"source": {
-						"type": "DelimitedTextSource",
+						"type": "BinarySource",
 						"storeSettings": {
 							"type": "SftpReadSettings",
 							"recursive": true,
-							"enablePartitionDiscovery": false,
+							"deleteFilesAfterCompletion": false,
 							"disableChunking": false
 						},
 						"formatSettings": {
-							"type": "DelimitedTextReadSettings"
+							"type": "BinaryReadSettings"
 						}
 					},
 					"sink": {
-						"type": "DelimitedTextSink",
+						"type": "BinarySink",
 						"storeSettings": {
-							"type": "AzureBlobStorageWriteSettings"
-						},
-						"formatSettings": {
-							"type": "DelimitedTextWriteSettings",
-							"quoteAllText": true,
-							"fileExtension": ".txt"
+							"type": "SftpWriteSettings",
+							"operationTimeout": "01:00:00",
+							"useTempFileRename": true
 						}
 					},
 					"enableStaging": false
 				},
 				"inputs": [
 					{
-						"referenceName": "BOA_FilePull",
+						"referenceName": "FileTransfer",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "DS_ABS_PipeDel",
-						"type": "DatasetReference",
-						"parameters": {
-							"ContainerName": "main",
-							"Path": "Data/Sammons Industrial/SiteProRentals",
-							"FileName": {
-								"value": "@concat('BOA_FileGrab_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMddHHmmss'),'.csv')",
-								"type": "Expression"
-							}
-						}
+						"referenceName": "FileTransfer_BOA_ToBilltrust",
+						"type": "DatasetReference"
 					}
 				]
 			}

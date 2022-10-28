@@ -1,8 +1,8 @@
 {
-	"name": "FileTransfer",
+	"name": "FileTransfer_BOA_ToBilltrust",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "BofA",
+			"referenceName": "Billtrust_LS",
 			"type": "LinkedServiceReference"
 		},
 		"annotations": [],
@@ -10,7 +10,7 @@
 		"typeProperties": {
 			"location": {
 				"type": "SftpLocation",
-				"folderPath": "/outgoing"
+				"folderPath": "/Import"
 			}
 		}
 	}
