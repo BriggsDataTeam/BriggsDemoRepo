@@ -1,0 +1,21 @@
+{
+	"name": "Billtrust_LS",
+	"type": "Microsoft.Synapse/workspaces/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "Sftp",
+		"typeProperties": {
+			"host": "caftp-uat.billtrust.com",
+			"port": 22,
+			"skipHostKeyValidation": false,
+			"hostKeyFingerprint": "ssh-rsa 2048 5f:54:f3:5d:82:be:ea:48:78:f4:86:52:5a:9a:e3:7d",
+			"authenticationType": "Basic",
+			"userName": "SitePro-test",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIlNZTkFQU0VAM0Q2MjM2OUItM0Y1RC00RUE0LThBNUEtQzJEQzU5OTg2NzU2XzMxZDI0ZjRmLTliZDUtNGRmZC04MzgwLTE0NzQ5ZTc5OTI4ZiINCn0="
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}
