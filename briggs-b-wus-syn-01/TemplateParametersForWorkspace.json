@@ -20,6 +20,9 @@
 		"AzureSqlDatabase1_connectionString": {
 			"value": ""
 		},
+		"Billtrust_LS_password": {
+			"value": ""
+		},
 		"BofA_password": {
 			"value": ""
 		},
@@ -52,6 +55,15 @@
 		},
 		"briggs-b-wus-syn-01-WorkspaceDefaultSqlServer_connectionString": {
 			"value": ""
+		},
+		"Billtrust_LS_properties_typeProperties_host": {
+			"value": "caftp-uat.billtrust.com"
+		},
+		"Billtrust_LS_properties_typeProperties_hostKeyFingerprint": {
+			"value": "ssh-rsa 2048 5f:54:f3:5d:82:be:ea:48:78:f4:86:52:5a:9a:e3:7d"
+		},
+		"Billtrust_LS_properties_typeProperties_userName": {
+			"value": "SitePro-test"
 		},
 		"BofA_properties_typeProperties_host": {
 			"value": "b2b02u.bankofamerica.com"
