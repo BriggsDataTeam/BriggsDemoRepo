@@ -1,0 +1,17 @@
+{
+	"name": "FileTransfer",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Billtrust_LS",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "SftpLocation",
+				"folderPath": "/Import"
+			}
+		}
+	}
+}
