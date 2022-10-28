@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "ToSalesforce_copy1",
+				"name": "ToSalesforce",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
