@@ -3,10 +3,17 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "CopyData_BilltrustTest",
+				"name": "CopyData_ToBilltrust_failure",
 				"description": "Get data from briggsmdw\nDrop into sftp",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "CopyData_ToBilltrust",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -462,6 +469,463 @@
 								"type": "Expression"
 							}
 						}
+					}
+				]
+			},
+			{
+				"name": "CopyData_ToBilltrust",
+				"description": "Get data from briggsmdw\nDrop into sftp",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT\n  t.tranid AS InvoiceNumber\n, SUM(CAST(t.totalaftertaxes AS DECIMAL(18,2))) AS InvoiceAmount\n, SUM(CAST(t.foreignamountunpaid AS DECIMAL(18,2))) AS OpenAmount\n, SUM(CAST(t.custbody_celigo_disc_total_variance AS DECIMAL(18,2))) AS DiscountAmount\n, SUM(CAST(t.baseshippingtaxamount AS DECIMAL(18,2))) AS FreightAmount\n, SUM(CAST(t.taxtotal AS DECIMAL(18,2))) AS TaxAmount\n, CONVERT(VARCHAR(10), CAST(t.trandate AS DATE), 101) AS InvoiceDate\n, t.otherrefnum AS PONumber\n, '' AS StatementNumber\n, '0.00' AS StatementAmount\n, '' AS ParentCustomerNumber\n, c.entityid AS CustomerNumber\n, t.custbody_customer_company_name AS CustomerName\n, ea.addr1 AS CustomerAddress1\n, REPLACE(REPLACE(RTRIM(CONCAT(LTRIM(RTRIM(ea.addr2)), ' ', LTRIM(RTRIM(ea.addr3)))), '  ', ' '),'  ', ' ') AS CustomerAddress2\n, ea.city AS CustomerCity\n, ea.[state] AS CustomerState\n, ea.zip AS CustomerZip\n, '0.00' AS CustomMoney1\n, '0.00' AS CustomMoney2\n, t.id AS CustomField1\n, '' AS CustomField2\n, '' AS CustomField3\n, '' AS CustomField4\n, '' AS CustomField5\n, '' AS CustomField6\n, '' AS CustomField7\n, '' AS CustomField8\n, '' AS CustomField9\n, '' AS CustomField10\n, '' AS CustomField11\n, '' AS CustomField12\n, '' AS CustomField13\n, '' AS CustomField14\n, '' AS CustomField15\n, '' AS CustomField16\n, '' AS CustomField17\n, '' AS CustomField18\n, '' AS CustomField19\n, '' AS CustomField20\n\nFROM Netsuite.[Transaction] t\nJOIN Netsuite.Customer c ON t.entity = c.id\nLEFT JOIN Netsuite.EntityAddress ea ON ea.nkey = c.defaultbillingaddress\nWHERE t.[type] IN ('CashSale', 'CustInvc')\nAND t.foreignAmountUnpaid > 0.00\nGROUP BY\n  t.tranid\n, CONVERT(VARCHAR(10), CAST(t.trandate AS DATE), 101)\n, t.otherrefnum\n, c.entityid\n, t.custbody_customer_company_name\n, ea.addr1\n, REPLACE(REPLACE(RTRIM(CONCAT(LTRIM(RTRIM(ea.addr2)), ' ', LTRIM(RTRIM(ea.addr3)))), '  ', ' '),'  ', ' ')\n, ea.city\n, ea.[state]\n, ea.zip\n, t.id\nORDER BY t.id",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "SftpWriteSettings",
+							"operationTimeout": "01:00:00",
+							"useTempFileRename": true
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "InvoiceNumber",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 1
+								}
+							},
+							{
+								"source": {
+									"name": "InvoiceAmount",
+									"type": "Decimal"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 2
+								}
+							},
+							{
+								"source": {
+									"name": "OpenAmount",
+									"type": "Decimal"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 3
+								}
+							},
+							{
+								"source": {
+									"name": "DiscountAmount",
+									"type": "Decimal"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 4
+								}
+							},
+							{
+								"source": {
+									"name": "FreightAmount",
+									"type": "Decimal"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 5
+								}
+							},
+							{
+								"source": {
+									"name": "TaxAmount",
+									"type": "Decimal"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 6
+								}
+							},
+							{
+								"source": {
+									"name": "InvoiceDate",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 7
+								}
+							},
+							{
+								"source": {
+									"name": "PONumber",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 8
+								}
+							},
+							{
+								"source": {
+									"name": "StatementNumber",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 9
+								}
+							},
+							{
+								"source": {
+									"name": "StatementAmount",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 10
+								}
+							},
+							{
+								"source": {
+									"name": "ParentCustomerNumber",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 11
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerNumber",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 12
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerName",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 13
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerAddress1",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 14
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerAddress2",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 15
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerCity",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 16
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerState",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 17
+								}
+							},
+							{
+								"source": {
+									"name": "CustomerZip",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 18
+								}
+							},
+							{
+								"source": {
+									"name": "CustomMoney1",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 19
+								}
+							},
+							{
+								"source": {
+									"name": "CustomMoney2",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 20
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField1",
+									"type": "Int64"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 21
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField2",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 22
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField3",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 23
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField4",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 24
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField5",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 25
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField6",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 26
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField7",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 27
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField8",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 28
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField9",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 29
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField10",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 30
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField11",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 31
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField12",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 32
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField13",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 33
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField14",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 34
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField15",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 35
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField16",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 36
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField17",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 37
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField18",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 38
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField19",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 39
+								}
+							},
+							{
+								"source": {
+									"name": "CustomField20",
+									"type": "String"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 40
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "dbo",
+							"table_name": "user"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ToBilltrust_DS",
+						"type": "DatasetReference"
 					}
 				]
 			}

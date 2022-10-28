@@ -1,0 +1,25 @@
+{
+	"name": "ToBilltrust_DS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Billtrust_LS",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "SftpLocation",
+				"fileName": {
+					"value": "@concat('val_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'MMddyyyy'),'.txt')",
+					"type": "Expression"
+				},
+				"folderPath": "/Import"
+			},
+			"columnDelimiter": "|",
+			"escapeChar": "\\",
+			"quoteChar": ""
+		},
+		"schema": []
+	}
+}
