@@ -16440,6 +16440,28 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/FileTransfer_BOA_ToBilltrust')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Billtrust_LS",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "SftpLocation",
+						"folderPath": "/Import"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/Billtrust_LS')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/GetCeridianToken')]",
 			"type": "Microsoft.Synapse/workspaces/datasets",
 			"apiVersion": "2019-06-01-preview",
@@ -17511,25 +17533,223 @@
 			"location": "westus"
 		},
 		{
-			"name": "[concat(parameters('workspaceName'), '/FileTransfer_BOA_ToBilltrust')]",
-			"type": "Microsoft.Synapse/workspaces/datasets",
+			"name": "[concat(parameters('workspaceName'), '/MetTel_SynSink')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Billtrust_LS",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "Binary",
-				"typeProperties": {
-					"location": {
-						"type": "SftpLocation",
-						"folderPath": "/Import"
+				"activities": [
+					{
+						"name": "GetBearerToken",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": "https://id.bruin.com/identity/connect/token",
+							"connectVia": {
+								"referenceName": "AutoResolveIntegrationRuntime",
+								"type": "IntegrationRuntimeReference"
+							},
+							"method": "POST",
+							"headers": {
+								"content-type": "application/x-www-form-urlencoded"
+							},
+							"body": "client_id=1QuQH0gebBW96Gjxs2uUn0HqKmV6LGSE&client_secret=1RNGDOBTwECQVUbgcSts52B6IcDlm6PmZkWybfqZdBGXVaRLRR7e9p1A62myJzRm&grant_type=client_credentials&scope=public_api"
+						}
+					},
+					{
+						"name": "Get raw data to csv",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "GetBearerToken",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"additionalHeaders": {
+									"Authorization": {
+										"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+										"type": "Expression"
+									}
+								},
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF OBJECT_ID('briggsbetamdw.POR.MetTelUsers') IS NOT NULL\n   TRUNCATE TABLE briggsbetamdw.POR.MetTelUsers;",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "['userID']"
+										},
+										"sink": {
+											"name": "UserID"
+										}
+									},
+									{
+										"source": {
+											"path": "['username']"
+										},
+										"sink": {
+											"name": "Username"
+										}
+									},
+									{
+										"source": {
+											"path": "['dirID']"
+										},
+										"sink": {
+											"name": "DirID"
+										}
+									},
+									{
+										"source": {
+											"path": "['firstName']"
+										},
+										"sink": {
+											"name": "FirstName"
+										}
+									},
+									{
+										"source": {
+											"path": "['lastName']"
+										},
+										"sink": {
+											"name": "LastName"
+										}
+									},
+									{
+										"source": {
+											"path": "['clientID']"
+										},
+										"sink": {
+											"name": "ClientID"
+										}
+									},
+									{
+										"source": {
+											"path": "['title']"
+										},
+										"sink": {
+											"name": "Title"
+										}
+									},
+									{
+										"source": {
+											"path": "['phoneNumber']"
+										},
+										"sink": {
+											"name": "PhoneNumber"
+										}
+									},
+									{
+										"source": {
+											"path": "['role']"
+										},
+										"sink": {
+											"name": "Role"
+										}
+									},
+									{
+										"source": {
+											"path": "['address']"
+										},
+										"sink": {
+											"name": "Address"
+										}
+									},
+									{
+										"source": {
+											"path": "['status']"
+										},
+										"sink": {
+											"name": "Status"
+										}
+									},
+									{
+										"source": {
+											"path": "['employeeID']"
+										},
+										"sink": {
+											"name": "EmployeeID"
+										}
+									},
+									{
+										"source": {
+											"path": "['mobileNumber']"
+										},
+										"sink": {
+											"name": "MobileNumber"
+										}
+									}
+								],
+								"collectionReference": "$['documents']",
+								"mapComplexValuesToString": false
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Bruin_RestDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "Briggs_MDW",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_name": "POR",
+									"table_name": "MetTelUsers"
+								}
+							}
+						]
 					}
-				}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "annie"
+				},
+				"annotations": []
 			},
 			"dependsOn": [
-				"[concat(variables('workspaceId'), '/linkedServices/Billtrust_LS')]"
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
+				"[concat(variables('workspaceId'), '/datasets/Bruin_RestDataset')]",
+				"[concat(variables('workspaceId'), '/datasets/Briggs_MDW')]"
 			]
 		}
 	]
