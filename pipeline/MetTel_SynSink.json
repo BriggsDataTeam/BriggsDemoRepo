@@ -49,6 +49,15 @@
 				"typeProperties": {
 					"source": {
 						"type": "RestSource",
+						"additionalColumns": [
+							{
+								"name": "ImportDate",
+								"value": {
+									"value": "@formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyy-MM-dd hh:mm:ss')",
+									"type": "Expression"
+								}
+							}
+						],
 						"httpRequestTimeout": "00:01:40",
 						"requestInterval": "00.00:00:00.010",
 						"requestMethod": "GET",
@@ -175,6 +184,14 @@
 								},
 								"sink": {
 									"name": "MobileNumber"
+								}
+							},
+							{
+								"source": {
+									"path": "$['ImportDate']"
+								},
+								"sink": {
+									"name": "ImportDate"
 								}
 							}
 						],
