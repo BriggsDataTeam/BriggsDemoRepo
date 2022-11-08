@@ -41,7 +41,7 @@
 					{
 						"activity": "GetBearerToken",
 						"dependencyConditions": [
-							"Succeeded"
+							"Failed"
 						]
 					}
 				],
@@ -205,6 +205,162 @@
 								"value": "@concat('RingCentral_UsersAPI_',formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyyMMddHHmmss'),'.csv')",
 								"type": "Expression"
 							}
+						}
+					}
+				]
+			},
+			{
+				"name": "Get raw data to DW",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "GetBearerToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"additionalHeaders": {
+							"Authorization": {
+								"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+								"type": "Expression"
+							}
+						},
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "IF OBJECT_ID('briggsbetamdw.SitePro.RingCentralUsers') IS NOT NULL\n   TRUNCATE TABLE briggsbetamdw.SitePro.RingCentralUsers;",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "['contact']['firstName']"
+								},
+								"sink": {
+									"name": "FirstName"
+								}
+							},
+							{
+								"source": {
+									"path": "['contact']['lastName']"
+								},
+								"sink": {
+									"name": "LastName"
+								}
+							},
+							{
+								"source": {
+									"path": "['contact']['jobTitle']"
+								},
+								"sink": {
+									"name": "JobTitle"
+								}
+							},
+							{
+								"source": {
+									"path": "['contact']['department']"
+								},
+								"sink": {
+									"name": "Department"
+								}
+							},
+							{
+								"source": {
+									"path": "['contact']['email']"
+								},
+								"sink": {
+									"name": "Email"
+								}
+							},
+							{
+								"source": {
+									"path": "['contact']['businessPhone']"
+								},
+								"sink": {
+									"name": "BusinessPhone"
+								}
+							},
+							{
+								"source": {
+									"path": "['contact']['emailAsLoginName']"
+								},
+								"sink": {
+									"name": "EmailAsLoginName"
+								}
+							},
+							{
+								"source": {
+									"path": "['name']"
+								},
+								"sink": {
+									"name": "FullName"
+								}
+							},
+							{
+								"source": {
+									"path": "['type']"
+								},
+								"sink": {
+									"name": "Type"
+								}
+							},
+							{
+								"source": {
+									"path": "['status']"
+								},
+								"sink": {
+									"name": "Status"
+								}
+							},
+							{
+								"source": {
+									"path": "['permissions']['admin']['enabled']"
+								},
+								"sink": {
+									"name": "Enabled"
+								}
+							}
+						],
+						"collectionReference": "$['records']",
+						"mapComplexValuesToString": true
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "RingCentral_RestDataset",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Briggs_MDW",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "SitePro",
+							"table_name": "RingCentralUsers"
 						}
 					}
 				]
