@@ -231,6 +231,15 @@
 				"typeProperties": {
 					"source": {
 						"type": "RestSource",
+						"additionalColumns": [
+							{
+								"name": "ImportDate",
+								"value": {
+									"value": "@formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyy-MM-dd hh:mm:ss')",
+									"type": "Expression"
+								}
+							}
+						],
 						"httpRequestTimeout": "00:01:40",
 						"requestInterval": "00.00:00:00.010",
 						"requestMethod": "GET",
@@ -260,7 +269,8 @@
 									"path": "['contact']['firstName']"
 								},
 								"sink": {
-									"name": "FirstName"
+									"name": "FirstName",
+									"type": "String"
 								}
 							},
 							{
@@ -268,7 +278,8 @@
 									"path": "['contact']['lastName']"
 								},
 								"sink": {
-									"name": "LastName"
+									"name": "LastName",
+									"type": "String"
 								}
 							},
 							{
@@ -276,7 +287,8 @@
 									"path": "['contact']['jobTitle']"
 								},
 								"sink": {
-									"name": "JobTitle"
+									"name": "JobTitle",
+									"type": "String"
 								}
 							},
 							{
@@ -284,7 +296,8 @@
 									"path": "['contact']['department']"
 								},
 								"sink": {
-									"name": "Department"
+									"name": "Department",
+									"type": "String"
 								}
 							},
 							{
@@ -292,7 +305,8 @@
 									"path": "['contact']['email']"
 								},
 								"sink": {
-									"name": "Email"
+									"name": "Email",
+									"type": "String"
 								}
 							},
 							{
@@ -300,7 +314,8 @@
 									"path": "['contact']['businessPhone']"
 								},
 								"sink": {
-									"name": "BusinessPhone"
+									"name": "BusinessPhone",
+									"type": "String"
 								}
 							},
 							{
@@ -308,7 +323,8 @@
 									"path": "['contact']['emailAsLoginName']"
 								},
 								"sink": {
-									"name": "EmailAsLoginName"
+									"name": "EmailAsLoginName",
+									"type": "String"
 								}
 							},
 							{
@@ -316,7 +332,8 @@
 									"path": "['name']"
 								},
 								"sink": {
-									"name": "FullName"
+									"name": "FullName",
+									"type": "String"
 								}
 							},
 							{
@@ -324,7 +341,8 @@
 									"path": "['type']"
 								},
 								"sink": {
-									"name": "Type"
+									"name": "Type",
+									"type": "String"
 								}
 							},
 							{
@@ -332,7 +350,8 @@
 									"path": "['status']"
 								},
 								"sink": {
-									"name": "Status"
+									"name": "Status",
+									"type": "String"
 								}
 							},
 							{
@@ -340,7 +359,17 @@
 									"path": "['permissions']['admin']['enabled']"
 								},
 								"sink": {
-									"name": "Enabled"
+									"name": "Enabled",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['ImportDate']"
+								},
+								"sink": {
+									"name": "ImportDate",
+									"type": "DateTime"
 								}
 							}
 						],
