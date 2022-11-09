@@ -28,7 +28,7 @@
 				}
 			},
 			{
-				"name": "Get raw data to csv",
+				"name": "Get raw data to DW",
 				"type": "Copy",
 				"dependsOn": [
 					{
@@ -73,7 +73,7 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"preCopyScript": "IF OBJECT_ID('briggsbetamdw.POR.MetTelUsers') IS NOT NULL\n   TRUNCATE TABLE briggsbetamdw.POR.MetTelUsers;",
+						"preCopyScript": "IF OBJECT_ID('briggsbetamdw.SitePro.MetTelUsers') IS NOT NULL\n   TRUNCATE TABLE briggsbetamdw.SitePro.MetTelUsers;",
 						"writeBehavior": "insert",
 						"sqlWriterUseTableLock": false,
 						"disableMetricsCollection": false
@@ -135,7 +135,7 @@
 									"path": "['title']"
 								},
 								"sink": {
-									"name": "Title"
+									"name": "JobTitle"
 								}
 							},
 							{
@@ -210,7 +210,7 @@
 						"referenceName": "Briggs_MDW",
 						"type": "DatasetReference",
 						"parameters": {
-							"schema_name": "POR",
+							"schema_name": "SitePro",
 							"table_name": "MetTelUsers"
 						}
 					}
