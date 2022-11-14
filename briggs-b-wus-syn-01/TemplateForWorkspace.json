@@ -18300,7 +18300,7 @@
 										{
 											"activity": "Lookup_RCextensions",
 											"dependencyConditions": [
-												"Failed"
+												"Succeeded"
 											]
 										}
 									],
@@ -18347,7 +18347,7 @@
 											"type": "DatasetReference",
 											"parameters": {
 												"relativeURI": {
-													"value": "@concat('restapi/v1.0/account/~/extension',item())",
+													"value": "@concat('restapi/v1.0/account/~/extension/',item().ExtensionID)",
 													"type": "Expression"
 												}
 											}
