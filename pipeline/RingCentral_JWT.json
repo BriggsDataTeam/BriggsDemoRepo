@@ -266,6 +266,24 @@
 						"mappings": [
 							{
 								"source": {
+									"path": "['id']"
+								},
+								"sink": {
+									"name": "ExtensionID",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['extensionNumber']"
+								},
+								"sink": {
+									"name": "ExtensionNumber",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
 									"path": "['contact']['firstName']"
 								},
 								"sink": {
