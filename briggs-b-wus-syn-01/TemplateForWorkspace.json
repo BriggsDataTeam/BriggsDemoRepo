@@ -17602,6 +17602,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "MetTel_SynSink",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -17623,7 +17630,8 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('workspaceId'), '/pipelines/MetTel')]"
+				"[concat(variables('workspaceId'), '/pipelines/MetTel')]",
+				"[concat(variables('workspaceId'), '/pipelines/MetTel_SynSink')]"
 			]
 		},
 		{
