@@ -5,10 +5,18 @@
 			"referenceName": "RingCentral_RestLS",
 			"type": "LinkedServiceReference"
 		},
+		"parameters": {
+			"relativeURI": {
+				"type": "string"
+			}
+		},
 		"annotations": [],
 		"type": "RestResource",
 		"typeProperties": {
-			"relativeUrl": "restapi/v1.0/account/~/extension"
+			"relativeUrl": {
+				"value": "@dataset().relativeURI",
+				"type": "Expression"
+			}
 		},
 		"schema": []
 	}
