@@ -5,7 +5,7 @@
 		"annotations": [],
 		"type": "RestService",
 		"typeProperties": {
-			"url": "https://platform.devtest.ringcentral.com/",
+			"url": "https://developers.ringcentral.com",
 			"enableServerCertificateValidation": true,
 			"authenticationType": "Anonymous"
 		},
