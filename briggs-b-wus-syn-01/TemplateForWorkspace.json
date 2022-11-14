@@ -15173,7 +15173,9 @@
 							{
 								"referenceName": "RingCentral_RestDataset",
 								"type": "DatasetReference",
-								"parameters": {}
+								"parameters": {
+									"relativeURI": "restapi/v1.0/account/~/extension"
+								}
 							}
 						],
 						"outputs": [
@@ -15381,7 +15383,9 @@
 							{
 								"referenceName": "RingCentral_RestDataset",
 								"type": "DatasetReference",
-								"parameters": {}
+								"parameters": {
+									"relativeURI": "restapi/v1.0/account/~/extension"
+								}
 							}
 						],
 						"outputs": [
@@ -17017,10 +17021,18 @@
 					"referenceName": "RingCentral_RestLS",
 					"type": "LinkedServiceReference"
 				},
+				"parameters": {
+					"relativeURI": {
+						"type": "string"
+					}
+				},
 				"annotations": [],
 				"type": "RestResource",
 				"typeProperties": {
-					"relativeUrl": "restapi/v1.0/account/~/extension"
+					"relativeUrl": {
+						"value": "@dataset().relativeURI",
+						"type": "Expression"
+					}
 				},
 				"schema": []
 			},
@@ -18210,7 +18222,9 @@
 							{
 								"referenceName": "RingCentral_RestDataset",
 								"type": "DatasetReference",
-								"parameters": {}
+								"parameters": {
+									"relativeURI": "restapi/v1.0/account/~/extension"
+								}
 							}
 						],
 						"outputs": [
