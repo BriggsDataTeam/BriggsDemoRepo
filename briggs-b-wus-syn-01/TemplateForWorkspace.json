@@ -18260,7 +18260,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT DISTINCT ExtensionID FROM SitePro.RingCentralUsers WHERE ExtensionID IS NOT NULL;",
+								"sqlReaderQuery": "SELECT DISTINCT ExtensionID FROM SitePro.RingCentralUsers WHERE ExtensionID IS NOT NULL ORDER BY ExtensionID;",
 								"queryTimeout": "02:00:00",
 								"partitionOption": "None"
 							},
@@ -18300,7 +18300,7 @@
 										{
 											"activity": "Lookup_RCextensions",
 											"dependencyConditions": [
-												"Succeeded"
+												"Failed"
 											]
 										}
 									],
@@ -18380,7 +18380,10 @@
 									"typeProperties": {
 										"source": {
 											"type": "AzureSqlSource",
-											"sqlReaderQuery": "SELECT DISTINCT ExtensionID FROM SitePro.RingCentralUsers",
+											"sqlReaderQuery": {
+												"value": "@concat('SELECT DISTINCT ExtensionID FROM SitePro.RingCentralUsers WHERE ExtensionID = ',item().ExtensionID)",
+												"type": "Expression"
+											},
 											"queryTimeout": "02:00:00",
 											"partitionOption": "None"
 										},
@@ -18391,7 +18394,8 @@
 												"schema_name": "SitePro",
 												"table_name": "SitePro.RingCentralUsers"
 											}
-										}
+										},
+										"firstRowOnly": true
 									}
 								}
 							]
