@@ -18078,7 +18078,7 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "IF OBJECT_ID('briggsbetamdw.SitePro.RingCentralUsers') IS NOT NULL\n   TRUNCATE TABLE briggsbetamdw.SitePro.RingCentralUsers;",
+								"preCopyScript": "IF OBJECT_ID('briggsbetamdw.SitePro.RingCentralUsers') IS NOT NULL\n   TRUNCATE TABLE briggsbetamdw.SitePro.RingCentralUsers;\nIF OBJECT_ID('briggsbetamdw.SitePro.RingCentralCustomField') IS NOT NULL\n   TRUNCATE TABLE briggsbetamdw.SitePro.RingCentralCustomField;",
 								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"disableMetricsCollection": false
@@ -18300,7 +18300,7 @@
 										{
 											"activity": "Lookup_RCextensions",
 											"dependencyConditions": [
-												"Succeeded"
+												"Failed"
 											]
 										}
 									],
@@ -18397,6 +18397,239 @@
 										},
 										"firstRowOnly": true
 									}
+								},
+								{
+									"name": "GetCustomFields_DW",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Lookup_RCextensions",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "RestSource",
+											"additionalColumns": [
+												{
+													"name": "ImportDate",
+													"value": {
+														"value": "@formatDateTime(convertFromUtc(utcNow(),'Central Standard Time'), 'yyyy-MM-dd hh:mm:ss')",
+														"type": "Expression"
+													}
+												}
+											],
+											"httpRequestTimeout": "00:01:40",
+											"requestInterval": "00.00:00:00.010",
+											"requestMethod": "GET",
+											"additionalHeaders": {
+												"Authorization": {
+													"value": "@{concat('bearer ',activity('GetBearerToken').output.access_token)}",
+													"type": "Expression"
+												}
+											},
+											"paginationRules": {
+												"supportRFC5988": "true"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"path": "['id']"
+													},
+													"sink": {
+														"name": "CustomID",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "['displayName']"
+													},
+													"sink": {
+														"name": "DisplayName",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "['value']"
+													},
+													"sink": {
+														"name": "Value",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['id']"
+													},
+													"sink": {
+														"name": "ExtensionID",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['extensionNumber']"
+													},
+													"sink": {
+														"name": "ExtensionNumber",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['contact']['firstName']"
+													},
+													"sink": {
+														"name": "FirstName",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['contact']['lastName']"
+													},
+													"sink": {
+														"name": "LastName",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['contact']['jobTitle']"
+													},
+													"sink": {
+														"name": "JobTitle",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['contact']['department']"
+													},
+													"sink": {
+														"name": "Department",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['contact']['email']"
+													},
+													"sink": {
+														"name": "Email",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['contact']['businessPhone']"
+													},
+													"sink": {
+														"name": "BusinessPhone",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['contact']['emailAsLoginName']"
+													},
+													"sink": {
+														"name": "EmailAsLoginName",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['name']"
+													},
+													"sink": {
+														"name": "FullName",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['type']"
+													},
+													"sink": {
+														"name": "Type",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['status']"
+													},
+													"sink": {
+														"name": "Status",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['permissions']['admin']['enabled']"
+													},
+													"sink": {
+														"name": "Enabled",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"path": "$['ImportDate']"
+													},
+													"sink": {
+														"name": "ImportDate",
+														"type": "DateTime"
+													}
+												}
+											],
+											"collectionReference": "$['customFields']"
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "RingCentral_RestDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"relativeURI": {
+													"value": "@concat('restapi/v1.0/account/~/extension/',item().ExtensionID)",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Briggs_MDW",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_name": "SitePro",
+												"table_name": "RingCentralCustomField"
+											}
+										}
+									]
 								}
 							]
 						}
