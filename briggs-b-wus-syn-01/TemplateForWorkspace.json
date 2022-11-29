@@ -18285,13 +18285,6 @@
 				"pipelines": [
 					{
 						"pipelineReference": {
-							"referenceName": "MetTel",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
 							"referenceName": "MetTel_SynSink",
 							"type": "PipelineReference"
 						},
@@ -18317,7 +18310,6 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('workspaceId'), '/pipelines/MetTel')]",
 				"[concat(variables('workspaceId'), '/pipelines/MetTel_SynSink')]"
 			]
 		},
@@ -19150,105 +19142,6 @@
 													},
 													"sink": {
 														"name": "ExtensionNumber",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['contact']['firstName']"
-													},
-													"sink": {
-														"name": "FirstName",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['contact']['lastName']"
-													},
-													"sink": {
-														"name": "LastName",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['contact']['jobTitle']"
-													},
-													"sink": {
-														"name": "JobTitle",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['contact']['department']"
-													},
-													"sink": {
-														"name": "Department",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['contact']['email']"
-													},
-													"sink": {
-														"name": "Email",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['contact']['businessPhone']"
-													},
-													"sink": {
-														"name": "BusinessPhone",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['contact']['emailAsLoginName']"
-													},
-													"sink": {
-														"name": "EmailAsLoginName",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['name']"
-													},
-													"sink": {
-														"name": "FullName",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['type']"
-													},
-													"sink": {
-														"name": "Type",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['status']"
-													},
-													"sink": {
-														"name": "Status",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"path": "$['permissions']['admin']['enabled']"
-													},
-													"sink": {
-														"name": "Enabled",
 														"type": "String"
 													}
 												},
