@@ -9,12 +9,6 @@
 					"referenceName": "MetTel_SynSink",
 					"type": "PipelineReference"
 				}
-			},
-			{
-				"pipelineReference": {
-					"referenceName": "RingCentral_Ext2",
-					"type": "PipelineReference"
-				}
 			}
 		],
 		"type": "ScheduleTrigger",
