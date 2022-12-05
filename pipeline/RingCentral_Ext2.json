@@ -383,7 +383,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "@concat('SELECT DISTINCT ExtensionID FROM SitePro.RingCentralUsers WHERE ExtensionID = ',item().ExtensionID)",
+										"value": "@concat('SELECT DISTINCT ExtensionID FROM SitePro.RingCentralUserList WHERE ExtensionID = ',item().ExtensionID)",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -394,7 +394,7 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"schema_name": "SitePro",
-										"table_name": "SitePro.RingCentralUserList"
+										"table_name": "RingCentralUserList"
 									}
 								},
 								"firstRowOnly": true
