@@ -29,7 +29,7 @@
 					"sink": {
 						"type": "SqlPoolSink",
 						"preCopyScript": {
-							"value": "SELECT * FROM DBO.EXPDATE4\nWHERE expDate <= GETDATE() + 7",
+							"value": "DROP TABLE DBO.EXPDATE4",
 							"type": "Expression"
 						},
 						"allowPolyBase": true,
