@@ -1,0 +1,29 @@
+{
+	"name": "SqlPoolTable1",
+	"properties": {
+		"annotations": [],
+		"type": "SqlPoolTable",
+		"schema": [
+			{
+				"name": "accName",
+				"type": "varchar"
+			},
+			{
+				"name": "expDate",
+				"type": "varchar"
+			},
+			{
+				"name": "email",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "ExpDate5"
+		},
+		"sqlPool": {
+			"referenceName": "briggsbetamdw",
+			"type": "SqlPoolReference"
+		}
+	}
+}
