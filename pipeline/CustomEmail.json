@@ -29,7 +29,7 @@
 					"sink": {
 						"type": "SqlPoolSink",
 						"preCopyScript": {
-							"value": "DROP TABLE DBO.EXPDATE4",
+							"value": "DROP TABLE DBO.EXPDATE5",
 							"type": "Expression"
 						},
 						"allowPolyBase": true,
@@ -40,13 +40,7 @@
 						},
 						"tableOption": "autoCreate"
 					},
-					"enableStaging": true,
-					"stagingSettings": {
-						"linkedServiceName": {
-							"referenceName": "AzureBlobStorage1",
-							"type": "LinkedServiceReference"
-						}
-					},
+					"enableStaging": false,
 					"translator": {
 						"type": "TabularTranslator",
 						"mappings": [
