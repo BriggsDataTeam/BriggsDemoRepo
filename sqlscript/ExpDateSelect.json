@@ -1,5 +1,5 @@
 {
-	"name": "SQL script 4",
+	"name": "ExpDateSelect",
 	"properties": {
 		"content": {
 			"query": "select accName, email, expDate \nfrom OPENROWSET(\n    BULK 'https://briggsbetawusdls01.blob.core.windows.net/main/Test/Temp/Exp.csv',\n    FORMAT = 'CSV',\n    PARSER_VERSION = '2.0',\n    HEADER_ROW = TRUE\n) \nas UserAcc\nWHERE expDate <= GETDATE() + 7",
