@@ -54,7 +54,7 @@
 			"value": ""
 		},
 		"briggs-b-wus-syn-01-WorkspaceDefaultSqlServer_connectionString": {
-			"value": ""
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:briggs-b-wus-syn-01.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
 		},
 		"Billtrust_LS_properties_typeProperties_host": {
 			"value": "caftp-uat.billtrust.com"
