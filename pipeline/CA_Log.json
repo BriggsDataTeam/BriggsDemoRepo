@@ -149,11 +149,28 @@
 				"outputs": [
 					{
 						"referenceName": "DelimitedText2",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"ds_filename": {
+								"value": "@pipeline().parameters.filename",
+								"type": "Expression"
+							}
+						}
 					}
 				]
 			}
 		],
+		"parameters": {
+			"filename": {
+				"type": "string",
+				"defaultValue": "logs"
+			}
+		},
+		"variables": {
+			"Test": {
+				"type": "String"
+			}
+		},
 		"annotations": []
 	}
 }

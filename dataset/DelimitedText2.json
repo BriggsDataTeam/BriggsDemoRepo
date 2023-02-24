@@ -5,17 +5,26 @@
 			"referenceName": "linkedService1",
 			"type": "LinkedServiceReference"
 		},
+		"parameters": {
+			"ds_filename": {
+				"type": "string"
+			}
+		},
 		"annotations": [],
 		"type": "DelimitedText",
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@concat(replace(dataset().ds_filename,'.csv',''), '_', formatDateTime(convertTimeZone(utcnow(),'UTC','Eastern Standard Time'),'yyyy-MM-ddTHHmmss'), '.csv')\n",
+					"type": "Expression"
+				},
 				"folderPath": "Test/Temp",
 				"fileSystem": "main"
 			},
 			"columnDelimiter": ",",
 			"escapeChar": "\\",
-			"firstRowAsHeader": false,
+			"firstRowAsHeader": true,
 			"quoteChar": "\""
 		},
 		"schema": [
