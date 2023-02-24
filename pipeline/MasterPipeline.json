@@ -58,7 +58,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "SELECT '@{pipeline().DataFactory}' as DataFactory_Name,\n'@{pipeline().Pipeline}' as Pipeline_Name,\n'@{pipeline().RunId}' as RunId,\n'dbo.ExpDate5' as Source,\n'CACreateLogs' as Destination,\n'@{activity('Execute Pipeline2').output.executionDetails[0].status}' as Execution_Status,\n'@{utcnow()}' as ErrorLoggedTime",
+							"value": "SELECT '@{pipeline().DataFactory}' as DataFactory_Name,\n'@{pipeline().Pipeline}' as Pipeline_Name,\n'@{pipeline().RunId}' as RunId,\n'dbo.ExpDate5' as Source,\n'CACreateLogs' as Destination,\n'@{utcnow()}' as ErrorLoggedTime",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
