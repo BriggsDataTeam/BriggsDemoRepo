@@ -9,7 +9,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"pipeline": {
-						"referenceName": "CA_Log",
+						"referenceName": "CA_Log_file",
 						"type": "PipelineReference"
 					},
 					"waitOnCompletion": true
