@@ -1,0 +1,7 @@
+{
+	"name": "STAGE-BriggsIntegrationRuntime",
+	"properties": {
+		"type": "SelfHosted",
+		"description": "db-intrt-s00"
+	}
+}
