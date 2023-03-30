@@ -1,0 +1,43 @@
+{
+	"name": "source_dataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "linkedService1",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"source_folder_name": {
+				"type": "string"
+			},
+			"source_file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Excel",
+		"typeProperties": {
+			"sheetName": "Sheet1",
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "ExpDate.xlsx",
+				"folderPath": "Test",
+				"fileSystem": "main"
+			},
+			"firstRowAsHeader": true
+		},
+		"schema": [
+			{
+				"name": "A/c Name",
+				"type": "String"
+			},
+			{
+				"name": "Expiry date",
+				"type": "String"
+			},
+			{
+				"name": "Email",
+				"type": "String"
+			}
+		]
+	}
+}

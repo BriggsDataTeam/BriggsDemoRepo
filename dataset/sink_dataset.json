@@ -1,0 +1,37 @@
+{
+	"name": "sink_dataset",
+	"properties": {
+		"parameters": {
+			"sink_schema_name": {
+				"type": "string"
+			},
+			"sink_table_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "SqlPoolTable",
+		"schema": [
+			{
+				"name": "accName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "expDate",
+				"type": "nvarchar"
+			},
+			{
+				"name": "email",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "stg",
+			"table": "temp_data"
+		},
+		"sqlPool": {
+			"referenceName": "briggsbetamdw",
+			"type": "SqlPoolReference"
+		}
+	}
+}
