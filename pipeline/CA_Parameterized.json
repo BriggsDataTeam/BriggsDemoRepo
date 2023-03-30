@@ -40,10 +40,6 @@
 						"referenceName": "source_dataset",
 						"type": "DatasetReference",
 						"parameters": {
-							"source_folder_name": {
-								"value": "@pipeline().parameters.source_folder_name",
-								"type": "Expression"
-							},
 							"source_file_name": {
 								"value": "@pipeline().parameters.source_file_name",
 								"type": "Expression"
@@ -54,39 +50,11 @@
 				"outputs": [
 					{
 						"referenceName": "sink_dataset",
-						"type": "DatasetReference",
-						"parameters": {
-							"sink_schema_name": {
-								"value": "@pipeline().parameters.sink_schema_name",
-								"type": "Expression"
-							},
-							"sink_table_name": {
-								"value": "@pipeline().parameters.sink_table_name",
-								"type": "Expression"
-							}
-						}
+						"type": "DatasetReference"
 					}
 				]
 			}
 		],
-		"parameters": {
-			"source_folder_name": {
-				"type": "string",
-				"defaultValue": "https://briggsbetawusdls01.blob.core.windows.net/main/Test"
-			},
-			"source_file_name": {
-				"type": "string",
-				"defaultValue": "ExpDate.xlsx"
-			},
-			"sink_schema_name": {
-				"type": "string",
-				"defaultValue": "stg"
-			},
-			"sink_table_name": {
-				"type": "string",
-				"defaultValue": "temp_data"
-			}
-		},
 		"annotations": []
 	}
 }

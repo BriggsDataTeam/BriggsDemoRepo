@@ -1,14 +1,6 @@
 {
 	"name": "sink_dataset",
 	"properties": {
-		"parameters": {
-			"sink_schema_name": {
-				"type": "string"
-			},
-			"sink_table_name": {
-				"type": "string"
-			}
-		},
 		"annotations": [],
 		"type": "SqlPoolTable",
 		"schema": [
