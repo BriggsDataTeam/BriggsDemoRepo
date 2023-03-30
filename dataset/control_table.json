@@ -1,5 +1,5 @@
 {
-	"name": "source_dataset_new",
+	"name": "control_table",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "linkedService1",
@@ -11,23 +11,27 @@
 			"sheetName": "Sheet1",
 			"location": {
 				"type": "AzureBlobFSLocation",
-				"fileName": "ExpDate.xlsx",
-				"folderPath": "Test",
+				"fileName": "Control table.xlsx",
+				"folderPath": "table",
 				"fileSystem": "main"
 			},
 			"firstRowAsHeader": true
 		},
 		"schema": [
 			{
-				"name": "A/c Name",
+				"name": "Source Folder",
 				"type": "String"
 			},
 			{
-				"name": "Expiry date",
+				"name": "Source File",
 				"type": "String"
 			},
 			{
-				"name": "Email",
+				"name": "Sink Schema",
+				"type": "String"
+			},
+			{
+				"name": "Sink Table",
 				"type": "String"
 			}
 		]
